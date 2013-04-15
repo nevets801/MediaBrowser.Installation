@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -12,6 +13,7 @@ using System.Threading.Tasks;
 using Ionic.Zip;
 using MediaBrowser.InstallUtil.Entities;
 using MediaBrowser.InstallUtil.Shortcuts;
+using MediaBrowser.InstallUtil.Extensions;
 using Microsoft.Win32;
 using ServiceStack.Text;
 
@@ -31,14 +33,14 @@ namespace MediaBrowser.InstallUtil
         protected bool InstallPismo = true;
         protected string RootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "MediaBrowser-Server");
         protected string EndInstallPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "MediaBrowser-Server");
-        protected IProgress<long> Progress;
+        protected IProgress<double> Progress;
         protected Action<string> ReportStatus; 
 
         protected bool IsUpdate = false;
 
         protected string TempLocation = Path.Combine(Path.GetTempPath(), "MediaBrowser");
 
-        protected WebClient MainClient = new WebClient();
+        protected WebClient MainClient;
 
         public Installer(InstallationRequest request)
         {
@@ -58,6 +60,7 @@ namespace MediaBrowser.InstallUtil
             RequestedVersion = request.Version ?? new Version("4.0");
             Progress = request.Progress;
             ReportStatus = request.ReportStatus;
+            MainClient = request.WebClient;
 
             switch (request.Product.ToLower())
             {
@@ -93,12 +96,61 @@ namespace MediaBrowser.InstallUtil
         }
 
         /// <summary>
+        /// Parse an argument string array into an installation request and wait on a calling process if there was one
+        /// </summary>
+        /// <param name="argString"></param>
+        /// <returns></returns>
+        public static InstallationRequest ParseArgsAndWait(string[] argString)
+        {
+            var request = new InstallationRequest();
+
+            var args = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var pair in argString)
+            {
+                var nameValue = pair.Split('=');
+                if (nameValue.Length == 2)
+                {
+                    args[nameValue[0]] = nameValue[1];
+                }
+            }
+            request.Archive = args.GetValueOrDefault("archive", null);
+            if (args.GetValueOrDefault("pismo", "true") == "false") request.InstallPismo = false;
+
+            request.Product = args.GetValueOrDefault("product", null) ?? ConfigurationManager.AppSettings["product"] ?? "server";
+            request.PackageClass = (PackageVersionClass)Enum.Parse(typeof(PackageVersionClass), args.GetValueOrDefault("class", null) ?? ConfigurationManager.AppSettings["class"] ?? "Release");
+            request.Version = new Version(args.GetValueOrDefault("version", "4.0"));
+
+            var callerId = args.GetValueOrDefault("caller", null);
+            if (callerId != null)
+            {
+                // Wait for our caller to exit
+                try
+                {
+                    var process = Process.GetProcessById(Convert.ToInt32(callerId));
+                    process.WaitForExit();
+                }
+                catch (ArgumentException)
+                {
+                    // wasn't running
+                }
+
+                request.Operation = InstallOperation.Update;
+            }
+            else
+            {
+                request.Operation = InstallOperation.Install;
+            }
+
+            return request;
+        }
+
+        /// <summary>
         /// Execute the install process
         /// </summary>
         /// <returns></returns>
-        protected async Task<InstallationResult> DoInstall(string archive)
+        public async Task<InstallationResult> DoInstall(string archive)
         {
-            ReportStatus(string.Format("Installing {0}...", FriendlyName));
+            ReportStatus(String.Format("Installing {0}...", FriendlyName));
 
             // Determine Package version
             var version = archive == null ? await GetPackageVersion() : null;
@@ -157,7 +209,7 @@ namespace MediaBrowser.InstallUtil
             // Download if we don't already have it
             if (archive == null)
             {
-                ReportStatus(string.Format("Downloading {0} (version {1})...", FriendlyName, ActualVersion));
+                ReportStatus(String.Format("Downloading {0} (version {1})...", FriendlyName, ActualVersion));
                 try
                 {
                     archive = await DownloadPackage(version);
@@ -173,11 +225,9 @@ namespace MediaBrowser.InstallUtil
             // Create our main directory and set permissions - this should only happen on install
             if (!IsUpdate)
             {
-                if (!Directory.Exists(RootPath))
-                {
-                    CreateAndSetPermissions(RootPath);
-                }
-                
+                var info = !Directory.Exists(RootPath) ? Directory.CreateDirectory(RootPath) : new DirectoryInfo(RootPath);
+                ReportStatus("Setting access rights.  This may take a minute...");
+                await SetPermissions(info);
             }
 
             if (Path.GetExtension(archive) == ".msi")
@@ -206,7 +256,7 @@ namespace MediaBrowser.InstallUtil
                 var success = false;
                 while (!success && retryCount < 3)
                 {
-                    var result = ExtractPackage(archive);
+                    var result = await ExtractPackage(archive);
 
                     if (!result.Success)
                     {
@@ -264,7 +314,7 @@ namespace MediaBrowser.InstallUtil
             }
 
             // And run
-            ReportStatus(string.Format("Starting {0}...", FriendlyName));
+            ReportStatus(String.Format("Starting {0}...", FriendlyName));
             try
             {
                 Process.Start(Path.Combine(EndInstallPath, TargetExe), TargetArgs);
@@ -279,26 +329,28 @@ namespace MediaBrowser.InstallUtil
         }
 
         /// <summary>
-        /// Create a path and set permissions for all users
-        /// Assumes the path does not already exist
+        /// Set permissions for all users
         /// </summary>
-        /// <param name="path"></param>
-        private void CreateAndSetPermissions(string path)
+        /// <param name="directoryInfo"></param>
+        private Task SetPermissions(DirectoryInfo directoryInfo)
         {
-            var securityIdentifier = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
+            return Task.Run(() =>
+            {
+                var securityIdentifier = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
 
-            var directoryInfo = Directory.CreateDirectory(RootPath);
-            var directorySecurity = directoryInfo.GetAccessControl();
-            var rule = new FileSystemAccessRule(
-                    securityIdentifier,
-                    FileSystemRights.Write |
-                    FileSystemRights.ReadAndExecute |
-                    FileSystemRights.Modify,
-                    AccessControlType.Allow);
-            bool modified;
+                var directorySecurity = directoryInfo.GetAccessControl();
+                var rule = new FileSystemAccessRule(
+                        securityIdentifier,
+                        FileSystemRights.Write |
+                        FileSystemRights.ReadAndExecute |
+                        FileSystemRights.Modify,
+                        AccessControlType.Allow);
+                bool modified;
 
-            directorySecurity.ModifyAccessRule(AccessControlModification.Add, rule, out modified);
-            directoryInfo.SetAccessControl(directorySecurity);
+                directorySecurity.ModifyAccessRule(AccessControlModification.Add, rule, out modified);
+                directoryInfo.SetAccessControl(directorySecurity);
+                
+            });
 
         }
 
@@ -314,11 +366,17 @@ namespace MediaBrowser.InstallUtil
         protected async Task<PackageVersionInfo> GetPackageVersion()
         {
             // get the package information for the server
-            var json = await MainClient.DownloadStringTaskAsync("http://www.mb3admin.com/admin/service/package/retrieveAll?name=" + PackageName);
-            var packages = JsonSerializer.DeserializeFromString<List<PackageInfo>>(json);
+            try
+            {
+                var json = await MainClient.DownloadStringTaskAsync("http://www.mb3admin.com/admin/service/package/retrieveAll?name=" + PackageName);
+                var packages = JsonSerializer.DeserializeFromString<List<PackageInfo>>(json);
 
-            return packages[0].versions.Where(v => v.classification <= PackageClass).OrderByDescending(v => v.version).FirstOrDefault(v => v.version <= RequestedVersion);
-
+                return packages[0].versions.Where(v => v.classification <= PackageClass).OrderByDescending(v => v.version).FirstOrDefault(v => v.version <= RequestedVersion);
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
         }
 
         /// <summary>
@@ -373,66 +431,70 @@ namespace MediaBrowser.InstallUtil
         /// It is assumed the archive is a zip file relative to that root (with all necessary sub-folders)
         /// </summary>
         /// <param name="archive"></param>
-        protected InstallationResult ExtractPackage(string archive)
+        protected Task<InstallationResult> ExtractPackage(string archive)
         {
-            // Delete old content of system
-            var systemDir = Path.Combine(RootPath, "System");
-            var backupDir = Path.Combine(RootPath, "System.old");
-            if (Directory.Exists(systemDir))
-            {
-                try
-                {
-                    if (Directory.Exists(backupDir)) Directory.Delete(backupDir, true);
+            return Task.Run(() =>
+                                {
+                                    // Delete old content of system
+                                    var systemDir = Path.Combine(RootPath, "System");
+                                    var backupDir = Path.Combine(RootPath, "System.old");
+                                    if (Directory.Exists(systemDir))
+                                    {
+                                        try
+                                        {
+                                            if (Directory.Exists(backupDir)) Directory.Delete(backupDir, true);
 
-                }
-                catch (Exception e)
-                {
-                    return new InstallationResult(false, "Could not delete previous backup directory.", e);
-                }
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            return new InstallationResult(false, "Could not delete previous backup directory.", e);
+                                        }
 
-                try
-                {
-                    Directory.Move(systemDir, backupDir);
-                }
-                catch (Exception e)
-                {
-                    return new InstallationResult(false, "Could not move system directory to backup.", e);
-                }
-            }
+                                        try
+                                        {
+                                            Directory.Move(systemDir, backupDir);
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            return new InstallationResult(false, "Could not move system directory to backup.", e);
+                                        }
+                                    }
 
-            // And extract
-            var retryCount = 0;
-            var success = false;
-            while (!success && retryCount < 3)
-            {
-                try
-                {
-                    using (var fileStream = File.OpenRead(archive))
-                    {
-                        using (var zipFile = ZipFile.Read(fileStream))
-                        {
-                            zipFile.ExtractAll(RootPath, ExtractExistingFileAction.OverwriteSilently);
-                            success = true;
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    if (retryCount < 3)
-                    {
-                        Thread.Sleep(250);
-                        retryCount++;
-                    }
-                    else
-                    {
-                        //Rollback
-                        RollBack(systemDir, backupDir);
-                        return new InstallationResult(false, string.Format("Could not extract {0} to {1} after {2} attempts.", archive, RootPath, retryCount), e);
-                    }
-                }
-            }
+                                    // And extract
+                                    var retryCount = 0;
+                                    var success = false;
+                                    while (!success && retryCount < 3)
+                                    {
+                                        try
+                                        {
+                                            using (var fileStream = File.OpenRead(archive))
+                                            {
+                                                using (var zipFile = ZipFile.Read(fileStream))
+                                                {
+                                                    zipFile.ExtractAll(RootPath, ExtractExistingFileAction.OverwriteSilently);
+                                                    success = true;
+                                                }
+                                            }
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            if (retryCount < 3)
+                                            {
+                                                Thread.Sleep(250);
+                                                retryCount++;
+                                            }
+                                            else
+                                            {
+                                                //Rollback
+                                                RollBack(systemDir, backupDir);
+                                                return new InstallationResult(false, String.Format("Could not extract {0} to {1} after {2} attempts.", archive, RootPath, retryCount), e);
+                                            }
+                                        }
+                                    }
 
-            return new InstallationResult();
+                                    return new InstallationResult();
+
+                                });
         }
 
         protected void RollBack(string systemDir, string backupDir)
@@ -546,6 +608,14 @@ namespace MediaBrowser.InstallUtil
         }
 
         /// <summary>
+        /// Publicly accessible version to clear our temp location
+        /// </summary>
+        public void ClearTempLocation()
+        {
+            ClearTempLocation(TempLocation);
+        }
+
+        /// <summary>
         /// Clear out (delete recursively) the supplied temp location
         /// </summary>
         /// <param name="location"></param>
@@ -573,6 +643,5 @@ namespace MediaBrowser.InstallUtil
 
             return true;
         }
-
     }
 }

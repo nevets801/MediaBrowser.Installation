@@ -6,7 +6,7 @@ namespace MediaBrowser.InstallUtil.Extensions
     /// <summary>
     /// Class ModelExtensions
     /// </summary>
-    static class ModelExtensions
+    public static class ModelExtensions
     {
         /// <summary>
         /// Values the or default.

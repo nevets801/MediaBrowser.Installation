@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 
 namespace MediaBrowser.InstallUtil.Entities
 {
@@ -10,7 +11,8 @@ namespace MediaBrowser.InstallUtil.Entities
         public PackageVersionClass PackageClass { get; set; }
         public Version Version { get; set; }
         public bool InstallPismo { get; set; }
-        public IProgress<long> Progress { get; set; }
-        public Action<string> ReportStatus { get; set; } 
+        public IProgress<double> Progress { get; set; }
+        public Action<string> ReportStatus { get; set; }
+        public WebClient WebClient { get; set; }
     }
 }
