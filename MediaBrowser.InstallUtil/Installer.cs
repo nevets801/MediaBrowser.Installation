@@ -206,14 +206,9 @@ namespace MediaBrowser.InstallUtil
                 var success = false;
                 while (!success && retryCount < 3)
                 {
-                    try
-                    {
-                        ExtractPackage(archive);
-                        success = true;
-                        // We're done with it so delete it (this is necessary for update operations)
-                        TryDelete(archive);
-                    }
-                    catch (Exception e)
+                    var result = ExtractPackage(archive);
+
+                    if (!result.Success)
                     {
                         if (retryCount < 3)
                         {
@@ -224,8 +219,14 @@ namespace MediaBrowser.InstallUtil
                         {
                             // Delete archive even if failed so we don't try again with this one
                             TryDelete(archive);
-                            return new InstallationResult(false, "Error Extracting", e);
+                            return result;
                         }
+                    }
+                    else
+                    {
+                        success = true;
+                        // We're done with it so delete it (this is necessary for update operations)
+                        TryDelete(archive);
                     }
                 }
 
@@ -234,7 +235,8 @@ namespace MediaBrowser.InstallUtil
                 var fullPath = Path.Combine(RootPath, "System", TargetExe);
                 try
                 {
-                    CreateShortcuts(fullPath);
+                    var result = CreateShortcuts(fullPath);
+                    if (!result.Success) return result;
                 }
                 catch (Exception e)
                 {
