@@ -5,6 +5,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MediaBrowser.InstallUtil", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MediaBrowser.Server.Installer", "..\MediaBrowser.Server.Installer\MediaBrowser.Server.Installer.csproj", "{9698E18C-BCA0-4F24-8D9C-2F3ADB150A4E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MediaBrowser.Updater", "..\MediaBrowser.Updater\MediaBrowser.Updater.csproj", "{04F30BB5-BE37-482B-A049-1DF91E1925A7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MediaBrowser.Uninstaller", "..\MediaBrowser.Uninstaller\MediaBrowser.Uninstaller.csproj", "{FACAF749-3E28-46DD-B613-654FCD434959}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -19,6 +23,14 @@ Global
 		{9698E18C-BCA0-4F24-8D9C-2F3ADB150A4E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9698E18C-BCA0-4F24-8D9C-2F3ADB150A4E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9698E18C-BCA0-4F24-8D9C-2F3ADB150A4E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{04F30BB5-BE37-482B-A049-1DF91E1925A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{04F30BB5-BE37-482B-A049-1DF91E1925A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{04F30BB5-BE37-482B-A049-1DF91E1925A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{04F30BB5-BE37-482B-A049-1DF91E1925A7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FACAF749-3E28-46DD-B613-654FCD434959}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FACAF749-3E28-46DD-B613-654FCD434959}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FACAF749-3E28-46DD-B613-654FCD434959}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FACAF749-3E28-46DD-B613-654FCD434959}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
