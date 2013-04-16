@@ -194,6 +194,7 @@ namespace MediaBrowser.Uninstaller
                 // First remove the system
                 RemovePath(Path.Combine(rootPath, "System"));
                 RemovePath(Path.Combine(rootPath, "MediaTools"));
+                RemovePath(Path.Combine(rootPath, "Updates"));
 
                 // And then the others specified
                 if (cbxRemoveCache.IsChecked == true)

@@ -28,7 +28,7 @@
     <ProductName>Media Browser Server Installer</ProductName>
     <PublisherName>Media Browser Team</PublisherName>
     <SuiteName>Media Browser</SuiteName>
-    <ApplicationRevision>2</ApplicationRevision>
+    <ApplicationRevision>3</ApplicationRevision>
     <ApplicationVersion>3.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
