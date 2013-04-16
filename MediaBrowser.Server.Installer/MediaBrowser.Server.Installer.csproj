@@ -170,8 +170,8 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>xcopy "$(TargetPath)" "$(SolutionDir)..\..\Mediabrowser\Installation" /y /d /r /i
-xcopy "$(TargetPath).config" "$(SolutionDir)..\..\Mediabrowser\Installation" /y /d /r /i</PostBuildEvent>
+    <PostBuildEvent>rem xcopy "$(TargetPath)" "$(SolutionDir)..\..\Mediabrowser\Installation" /y /d /r /i
+rem xcopy "$(TargetPath).config" "$(SolutionDir)..\..\Mediabrowser\Installation" /y /d /r /i</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

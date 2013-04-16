@@ -282,17 +282,20 @@ namespace MediaBrowser.InstallUtil
                     }
                 }
 
-                // Create shortcut
-                ReportStatus("Creating Shortcuts...");
-                var fullPath = Path.Combine(RootPath, "System", TargetExe);
-                try
+                if (!IsUpdate)
                 {
-                    var result = CreateShortcuts(fullPath);
-                    if (!result.Success) return result;
-                }
-                catch (Exception e)
-                {
-                    return new InstallationResult(false, "Error Creating Shortcut", e);
+                    // Create shortcut
+                    ReportStatus("Creating Shortcuts...");
+                    var fullPath = Path.Combine(RootPath, "System", TargetExe);
+                    try
+                    {
+                        var result = CreateShortcuts(fullPath);
+                        if (!result.Success) return result;
+                    }
+                    catch (Exception e)
+                    {
+                        return new InstallationResult(false, "Error Creating Shortcut", e);
+                    }
                 }
 
                 // Install Pismo
