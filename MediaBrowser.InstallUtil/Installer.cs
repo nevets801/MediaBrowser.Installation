@@ -277,6 +277,8 @@ namespace MediaBrowser.InstallUtil
                         success = true;
                         // We're done with it so delete it (this is necessary for update operations)
                         TryDelete(archive);
+                        // Also be sure there isn't an old update lying around
+                        if (!IsUpdate) RemovePath(Path.Combine(RootPath, "Updates"));
                     }
                 }
 
@@ -625,6 +627,18 @@ namespace MediaBrowser.InstallUtil
             {
                 Directory.Delete(location, true);
             }
+        }
+
+        private static void RemovePath(string path)
+        {
+            try
+            {
+                Directory.Delete(path, true);
+            }
+            catch (DirectoryNotFoundException)
+            {
+            }
+
         }
 
         private bool TryDelete(string file)
