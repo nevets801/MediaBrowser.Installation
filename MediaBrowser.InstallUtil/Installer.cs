@@ -223,10 +223,10 @@ namespace MediaBrowser.InstallUtil
             if (archive == null) return new InstallationResult(false);  //we canceled or had an error that was already reported
 
             // Create our main directory and set permissions - this should only happen on install
-            if (!IsUpdate)
+            if (!IsUpdate && !Directory.Exists(RootPath))
             {
-                var info = !Directory.Exists(RootPath) ? Directory.CreateDirectory(RootPath) : new DirectoryInfo(RootPath);
                 ReportStatus("Setting access rights.  This may take a minute...");
+                var info = Directory.CreateDirectory(RootPath);
                 await SetPermissions(info);
             }
 
