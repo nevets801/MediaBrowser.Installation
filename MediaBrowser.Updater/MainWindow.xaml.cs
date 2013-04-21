@@ -24,7 +24,7 @@ namespace MediaBrowser.Updater
             request.Progress = new ProgressUpdater(this);
             request.WebClient = MainClient;
             Installer = new InstallUtil.Installer(request);
-            DoInstall(request.Archive);  // fire and forget so we get our window up
+            DoUpdate(request.Archive);  // fire and forget so we get our window up
 
         }
 
@@ -52,9 +52,9 @@ namespace MediaBrowser.Updater
             lblStatus.Text = message;
         }
 
-        private async Task DoInstall(string archive)
+        private async Task DoUpdate(string archive)
         {
-            var result = await Installer.DoInstall(archive);
+            var result = await Installer.DoUpdate(archive);
             if (!result.Success)
             {
                 SystemClose(result.Message + "\n\n" + result.Exception.GetType() + "\n" + result.Exception.Message);

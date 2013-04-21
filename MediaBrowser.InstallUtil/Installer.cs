@@ -36,7 +36,7 @@ namespace MediaBrowser.InstallUtil
         protected IProgress<double> Progress;
         protected Action<string> ReportStatus; 
 
-        protected bool IsUpdate = false;
+        protected InstallOperation Operation;
 
         protected string TempLocation = Path.Combine(Path.GetTempPath(), "MediaBrowser");
 
@@ -53,7 +53,7 @@ namespace MediaBrowser.InstallUtil
         /// <param name="request"></param>
         protected void Init(InstallationRequest request)
         {
-            IsUpdate = request.Operation == InstallOperation.Update;
+            Operation = request.Operation;
             InstallPismo = request.InstallPismo;
             Archive = request.Archive;
             PackageClass = request.PackageClass;
@@ -159,7 +159,7 @@ namespace MediaBrowser.InstallUtil
             // Now try and shut down the server if that is what we are installing and it is running
             var procs = Process.GetProcessesByName("mediabrowser.serverapplication");
             var server = procs.Length > 0 ? procs[0] : null;
-            if (!IsUpdate && PackageName == "MBServer" && server != null)
+            if (PackageName == "MBServer" && server != null)
             {
                 ReportStatus("Shutting Down Media Browser Server...");
                 using (var client = new WebClient())
@@ -187,7 +187,7 @@ namespace MediaBrowser.InstallUtil
             }
             else
             {
-                if (!IsUpdate && PackageName == "MBTheater")
+                if (PackageName == "MBTheater")
                 {
                     // Uninstalling MBT - shut it down if it is running
                     var processes = Process.GetProcessesByName("mediabrowser.ui");
@@ -223,7 +223,7 @@ namespace MediaBrowser.InstallUtil
             if (archive == null) return new InstallationResult(false);  //we canceled or had an error that was already reported
 
             // Create our main directory and set permissions - this should only happen on install
-            if (!IsUpdate && !Directory.Exists(RootPath))
+            if (!Directory.Exists(RootPath))
             {
                 ReportStatus("Setting access rights.  This may take a minute...");
                 var info = Directory.CreateDirectory(RootPath);
@@ -278,12 +278,10 @@ namespace MediaBrowser.InstallUtil
                         // We're done with it so delete it (this is necessary for update operations)
                         TryDelete(archive);
                         // Also be sure there isn't an old update lying around
-                        if (!IsUpdate) RemovePath(Path.Combine(RootPath, "Updates"));
+                        RemovePath(Path.Combine(RootPath, "Updates"));
                     }
                 }
 
-                if (!IsUpdate)
-                {
                     // Create shortcut
                     ReportStatus("Creating Shortcuts...");
                     var fullPath = Path.Combine(RootPath, "System", TargetExe);
@@ -296,7 +294,6 @@ namespace MediaBrowser.InstallUtil
                     {
                         return new InstallationResult(false, "Error Creating Shortcut", e);
                     }
-                }
 
                 // Install Pismo
                 if (InstallPismo)
@@ -333,6 +330,87 @@ namespace MediaBrowser.InstallUtil
 
         }
 
+        /// <summary>
+        /// Execute the update process
+        /// </summary>
+        /// <returns></returns>
+        public async Task<InstallationResult> DoUpdate(string archive)
+        {
+            if (string.IsNullOrEmpty(archive))
+            {
+                throw new ArgumentNullException("archive");
+            }
+
+            ReportStatus(String.Format("Updating {0}...", FriendlyName));
+
+            if (Path.GetExtension(archive) == ".msi")
+            {
+
+                var logPath = Path.Combine(RootPath, "Logs");
+                if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
+
+                // Run in silent mode and wait for it to finish
+                // First uninstall any previous version
+                ReportStatus("Uninstalling any previous version...");
+                var logfile = Path.Combine(RootPath, "logs", "UnInstall.log");
+                var uninstaller = Process.Start("msiexec", "/x \"" + archive + "\" /quiet /le \"" + logfile + "\"");
+                if (uninstaller != null) uninstaller.WaitForExit();
+                // And now installer
+                ReportStatus("Installing " + FriendlyName);
+                logfile = Path.Combine(RootPath, "logs", "Install.log");
+                var installer = Process.Start(archive, "/quiet /le \"" + logfile + "\"");
+                installer.WaitForExit();  // let this throw if there is a problem
+            }
+            else
+            {
+                // Extract
+                ReportStatus("Extracting Package...");
+                var retryCount = 0;
+                var success = false;
+                while (!success && retryCount < 3)
+                {
+                    var result = await ExtractPackage(archive);
+
+                    if (!result.Success)
+                    {
+                        if (retryCount < 3)
+                        {
+                            retryCount++;
+                            Thread.Sleep(500);
+                        }
+                        else
+                        {
+                            // Delete archive even if failed so we don't try again with this one
+                            TryDelete(archive);
+                            return result;
+                        }
+                    }
+                    else
+                    {
+                        success = true;
+                        // We're done with it so delete it (this is necessary for update operations)
+                        TryDelete(archive);
+                    }
+                }
+
+                // Now delete the pismo install files cuz we don't need them
+                RemovePath(Path.Combine(RootPath, "Pismo"));
+            }
+
+            // And run
+            ReportStatus(String.Format("Starting {0}...", FriendlyName));
+            try
+            {
+                Process.Start(Path.Combine(EndInstallPath, TargetExe), TargetArgs);
+            }
+            catch (Exception e)
+            {
+                return new InstallationResult(false, "Error Executing - " + Path.Combine(EndInstallPath, TargetExe) + " " + TargetArgs, e);
+            }
+
+            return new InstallationResult();
+
+        }
         /// <summary>
         /// Set permissions for all users
         /// </summary>
