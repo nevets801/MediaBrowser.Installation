@@ -114,7 +114,7 @@ namespace MediaBrowser.InstallUtil
                 }
             }
             request.Archive = args.GetValueOrDefault("archive", null);
-            if (args.GetValueOrDefault("pismo", "true") == "false") request.InstallPismo = false;
+            if (args.GetValueOrDefault("pismo", "true") == "false") request.InstallPismo = true;
 
             request.Product = args.GetValueOrDefault("product", null) ?? ConfigurationManager.AppSettings["product"] ?? "server";
             request.PackageClass = (PackageVersionClass)Enum.Parse(typeof(PackageVersionClass), args.GetValueOrDefault("class", null) ?? ConfigurationManager.AppSettings["class"] ?? "Release");
@@ -150,17 +150,20 @@ namespace MediaBrowser.InstallUtil
         /// <returns></returns>
         public async Task<InstallationResult> DoInstall(string archive)
         {
+            Trace.TraceInformation("Installing {0}", FriendlyName);
             ReportStatus(String.Format("Installing {0}...", FriendlyName));
 
             // Determine Package version
             var version = archive == null ? await GetPackageVersion() : null;
             ActualVersion = version != null ? version.version : new Version(3, 0);
 
+            Trace.TraceInformation("Version is {0}", ActualVersion);
             // Now try and shut down the server if that is what we are installing and it is running
             var procs = Process.GetProcessesByName("mediabrowser.serverapplication");
             var server = procs.Length > 0 ? procs[0] : null;
             if (PackageName == "MBServer" && server != null)
             {
+                Trace.TraceInformation("Shutting down running server {0}", server.ProcessName);
                 ReportStatus("Shutting Down Media Browser Server...");
                 using (var client = new WebClient())
                 {
@@ -169,19 +172,24 @@ namespace MediaBrowser.InstallUtil
                         client.UploadString("http://localhost:8096/mediabrowser/System/Shutdown", "");
                         try
                         {
+                            Trace.TraceInformation("Waiting for server to exit...");
                             server.WaitForExit(30000); //don't hang indefinitely
+                            Trace.TraceInformation("Server exited...");
                         }
                         catch (ArgumentException)
                         {
                             // already gone
+                            Trace.TraceInformation("Server had already shutdown.");
                         }
                     }
                     catch (WebException e)
                     {
                         if (e.Status != WebExceptionStatus.Timeout && !e.Message.StartsWith("Unable to connect", StringComparison.OrdinalIgnoreCase))
                         {
+                            Trace.TraceError("Error shutting down server.  Installation Aborting. {0}", e.Message);
                             return new InstallationResult(false, "Error shutting down server. Please be sure it is not running and try again.", e);
                         }
+                        Trace.TraceError("Error attempting to shut downs server.  Installation will continue. {0}", e.Message);
                     }
                 }
             }
@@ -193,14 +201,17 @@ namespace MediaBrowser.InstallUtil
                     var processes = Process.GetProcessesByName("mediabrowser.ui");
                     if (processes.Length > 0)
                     {
+                        Trace.TraceInformation("Shutting down MB Theater...");
                         ReportStatus("Shutting Down Media Browser Theater...");
                         try
                         {
                             processes[0].Kill();
+                            Trace.TraceInformation("Successfully killed MBT process.");
                         }
                         catch (Exception ex)
                         {
-                            return new InstallationResult(false, "Unable to shutdown Media Browser Theater.  Please ensure it is not running before hitting OK.",ex);
+                            Trace.TraceError("Error shutting down MBT. Installation aborting. {0}", ex.Message);
+                            return new InstallationResult(false, "Unable to shutdown Media Browser Theater.  Please ensure it is not running and try again.", ex);
                         }
                     }
                 }
@@ -209,15 +220,22 @@ namespace MediaBrowser.InstallUtil
             // Download if we don't already have it
             if (archive == null)
             {
+                Trace.TraceInformation("Downloading {0} version {1}", FriendlyName, ActualVersion);
                 ReportStatus(String.Format("Downloading {0} (version {1})...", FriendlyName, ActualVersion));
                 try
                 {
                     archive = await DownloadPackage(version);
+                    if (archive != null) Trace.TraceInformation("Successfully downloaded version {0}", ActualVersion);
                 }
                 catch (Exception e)
                 {
+                    Trace.TraceError("Error downloading.  Installation aborting. {0}", e.Message);
                     return new InstallationResult(false, "Error Downloading Package", e);
                 }
+            }
+            else
+            {
+                Trace.TraceInformation("Archive to install was supplied {0}", archive);
             }
 
             if (archive == null) return new InstallationResult(false);  //we canceled or had an error that was already reported
@@ -225,79 +243,43 @@ namespace MediaBrowser.InstallUtil
             // Create our main directory and set permissions - this should only happen on install
             if (!Directory.Exists(RootPath))
             {
+                Trace.TraceInformation("Creating directory {0}", RootPath);
                 ReportStatus("Setting access rights.  This may take a minute...");
                 var info = Directory.CreateDirectory(RootPath);
+                Trace.TraceInformation("Attempting to set access rights on {0}", RootPath);
                 await SetPermissions(info);
             }
 
             if (Path.GetExtension(archive) == ".msi")
             {
-
-                var logPath = Path.Combine(RootPath, "Logs");
-                if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
-
-                // Run in silent mode and wait for it to finish
-                // First uninstall any previous version
-                ReportStatus("Uninstalling any previous version...");
-                var logfile = Path.Combine(RootPath, "logs", "UnInstall.log");
-                var uninstaller = Process.Start("msiexec", "/x \"" + archive + "\" /quiet /le \"" + logfile + "\"");
-                if (uninstaller != null) uninstaller.WaitForExit();
-                // And now installer
-                ReportStatus("Installing " + FriendlyName);
-                logfile = Path.Combine(RootPath, "logs", "Install.log");
-                var installer = Process.Start(archive, "/quiet /le \"" + logfile + "\"");
-                installer.WaitForExit();  // let this throw if there is a problem
+                RunMsi(archive);
             }
             else
             {
                 // Extract
-                ReportStatus("Extracting Package...");
-                var retryCount = 0;
-                var success = false;
-                while (!success && retryCount < 3)
+                var result = await Extract(archive);
+                if (!result.Success) return result;
+
+                // Create shortcut
+                ReportStatus("Creating Shortcuts...");
+                var fullPath = Path.Combine(RootPath, "System", TargetExe);
+
+                try
                 {
-                    var result = await ExtractPackage(archive);
-
-                    if (!result.Success)
-                    {
-                        if (retryCount < 3)
-                        {
-                            retryCount++;
-                            Thread.Sleep(500);
-                        }
-                        else
-                        {
-                            // Delete archive even if failed so we don't try again with this one
-                            TryDelete(archive);
-                            return result;
-                        }
-                    }
-                    else
-                    {
-                        success = true;
-                        // We're done with it so delete it (this is necessary for update operations)
-                        TryDelete(archive);
-                        // Also be sure there isn't an old update lying around
-                        RemovePath(Path.Combine(RootPath, "Updates"));
-                    }
+                    Trace.TraceInformation("Creating shortcuts");
+                    result = CreateShortcuts(fullPath);
+                    if (!result.Success) return result;
                 }
-
-                    // Create shortcut
-                    ReportStatus("Creating Shortcuts...");
-                    var fullPath = Path.Combine(RootPath, "System", TargetExe);
-                    try
-                    {
-                        var result = CreateShortcuts(fullPath);
-                        if (!result.Success) return result;
-                    }
-                    catch (Exception e)
-                    {
-                        return new InstallationResult(false, "Error Creating Shortcut", e);
-                    }
+                catch (Exception e)
+                {
+                    Trace.TraceError("Error creating shortcuts. Installation should still be valid. {0}", e.Message);
+                    return new InstallationResult(false, "Error Creating Shortcut", e);
+                }
 
                 // Install Pismo
                 if (InstallPismo)
                 {
+                    Trace.TraceInformation("Installing Pismo ISO package");
                     ReportStatus("Installing ISO Support...");
                     try
                     {
@@ -305,17 +287,86 @@ namespace MediaBrowser.InstallUtil
                     }
                     catch (Exception e)
                     {
+                        Trace.TraceError("Error installing Pismo. Installation should still be valid. {0}", e.Message);
                         return new InstallationResult(false, "Error Installing ISO support", e);
                     }
                 }
 
                 // Now delete the pismo install files
-                Directory.Delete(Path.Combine(RootPath, "Pismo"), true);
+                Trace.TraceInformation("Deleting Pismo install files");
+                RemovePath(Path.Combine(RootPath, "Pismo"));
 
 
             }
 
             // And run
+            return RunProgram();
+        }
+
+        protected async Task<InstallationResult> Extract(string archive)
+        {
+            Trace.TraceInformation("Starting extract package.");
+            ReportStatus("Extracting Package...");
+            var retryCount = 0;
+            var success = false;
+            while (!success && retryCount < 3)
+            {
+                var result = await ExtractPackage(archive);
+
+                if (!result.Success)
+                {
+                    if (retryCount < 3)
+                    {
+                        Trace.TraceError("Extract attempt failed. Will retry...");
+                        retryCount++;
+                        Thread.Sleep(500);
+                    }
+                    else
+                    {
+                        Trace.TraceError("Final extract failure.  Installation aborting.");
+                        // Delete archive even if failed so we don't try again with this one
+                        TryDelete(archive);
+                        return result;
+                    }
+                }
+                else
+                {
+                    success = true;
+                    Trace.TraceInformation("Extract successful.  Will now delete archive {0}", archive);
+                    // We're done with it so delete it (this is necessary for update operations)
+                    TryDelete(archive);
+                    // Also be sure there isn't an old update lying around
+                    Trace.TraceInformation("Deleting any old updates as well.");
+                    RemovePath(Path.Combine(RootPath, "Updates"));
+                }
+            }
+
+            return new InstallationResult();
+        }
+
+        protected void RunMsi(string archive)
+        {
+            Trace.TraceInformation("Archive is MSI installer {0}", archive);
+            var logPath = Path.Combine(RootPath, "Logs");
+            if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
+
+            // Run in silent mode and wait for it to finish
+            // First uninstall any previous version
+            ReportStatus("Uninstalling any previous version...");
+            var logfile = Path.Combine(RootPath, "logs", "UnInstall.log");
+            var uninstaller = Process.Start("msiexec", "/x \"" + archive + "\" /quiet /le \"" + logfile + "\"");
+            if (uninstaller != null) uninstaller.WaitForExit();
+            // And now installer
+            ReportStatus("Installing " + FriendlyName);
+            logfile = Path.Combine(RootPath, "logs", "Install.log");
+            var installer = Process.Start(archive, "/quiet /le \"" + logfile + "\"");
+            installer.WaitForExit();  // let this throw if there is a problem
+            
+        }
+
+        protected InstallationResult RunProgram()
+        {
+            Trace.TraceInformation("Attempting to start program {0} {1}", Path.Combine(EndInstallPath, TargetExe), TargetArgs);
             ReportStatus(String.Format("Starting {0}...", FriendlyName));
             try
             {
@@ -323,11 +374,13 @@ namespace MediaBrowser.InstallUtil
             }
             catch (Exception e)
             {
+                Trace.TraceError("Error starting program. Installation should still be valid. {0}", e.Message);
                 return new InstallationResult(false, "Error Executing - " + Path.Combine(EndInstallPath, TargetExe) + " " + TargetArgs, e);
             }
 
+            Trace.TraceInformation("Installation complete");
             return new InstallationResult();
-
+            
         }
 
         /// <summary>
@@ -338,77 +391,26 @@ namespace MediaBrowser.InstallUtil
         {
             if (string.IsNullOrEmpty(archive))
             {
+                Trace.TraceError("Update called with no archive.");
                 throw new ArgumentNullException("archive");
             }
 
+            Trace.TraceInformation("Updating {0}...", FriendlyName);
             ReportStatus(String.Format("Updating {0}...", FriendlyName));
 
             if (Path.GetExtension(archive) == ".msi")
             {
-
-                var logPath = Path.Combine(RootPath, "Logs");
-                if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
-
-                // Run in silent mode and wait for it to finish
-                // First uninstall any previous version
-                ReportStatus("Uninstalling any previous version...");
-                var logfile = Path.Combine(RootPath, "logs", "UnInstall.log");
-                var uninstaller = Process.Start("msiexec", "/x \"" + archive + "\" /quiet /le \"" + logfile + "\"");
-                if (uninstaller != null) uninstaller.WaitForExit();
-                // And now installer
-                ReportStatus("Installing " + FriendlyName);
-                logfile = Path.Combine(RootPath, "logs", "Install.log");
-                var installer = Process.Start(archive, "/quiet /le \"" + logfile + "\"");
-                installer.WaitForExit();  // let this throw if there is a problem
+                RunMsi(archive);
             }
             else
             {
                 // Extract
-                ReportStatus("Extracting Package...");
-                var retryCount = 0;
-                var success = false;
-                while (!success && retryCount < 3)
-                {
-                    var result = await ExtractPackage(archive);
-
-                    if (!result.Success)
-                    {
-                        if (retryCount < 3)
-                        {
-                            retryCount++;
-                            Thread.Sleep(500);
-                        }
-                        else
-                        {
-                            // Delete archive even if failed so we don't try again with this one
-                            TryDelete(archive);
-                            return result;
-                        }
-                    }
-                    else
-                    {
-                        success = true;
-                        // We're done with it so delete it (this is necessary for update operations)
-                        TryDelete(archive);
-                    }
-                }
-
-                // Now delete the pismo install files cuz we don't need them
-                RemovePath(Path.Combine(RootPath, "Pismo"));
+                var result = await Extract(archive);
+                if (!result.Success) return result;
             }
 
             // And run
-            ReportStatus(String.Format("Starting {0}...", FriendlyName));
-            try
-            {
-                Process.Start(Path.Combine(EndInstallPath, TargetExe), TargetArgs);
-            }
-            catch (Exception e)
-            {
-                return new InstallationResult(false, "Error Executing - " + Path.Combine(EndInstallPath, TargetExe) + " " + TargetArgs, e);
-            }
-
-            return new InstallationResult();
+            return RunProgram();
 
         }
         /// <summary>
@@ -449,10 +451,13 @@ namespace MediaBrowser.InstallUtil
         protected async Task<PackageVersionInfo> GetPackageVersion()
         {
             // get the package information for the server
+            Trace.TraceInformation("Attempting to retrieve latest version of {0}", PackageName);
+
             try
             {
                 var json = await MainClient.DownloadStringTaskAsync("http://www.mb3admin.com/admin/service/package/retrieveAll?name=" + PackageName);
                 var packages = JsonSerializer.DeserializeFromString<List<PackageInfo>>(json);
+                Trace.TraceInformation("Found {0} versions.  Will choose latest one of {1} class", packages.Count, PackageClass);
 
                 return packages[0].versions.Where(v => v.classification <= PackageClass).OrderByDescending(v => v.version).FirstOrDefault(v => v.version <= RequestedVersion);
             }
@@ -486,6 +491,7 @@ namespace MediaBrowser.InstallUtil
                 {
                     if (e.Status == WebExceptionStatus.RequestCanceled)
                     {
+                        Trace.TraceInformation("Download cancelled");
                         return null;
                     }
                     if (retryCount < 3 && (e.Status == WebExceptionStatus.Timeout || e.Status == WebExceptionStatus.ConnectFailure || e.Status == WebExceptionStatus.ProtocolError))
@@ -523,6 +529,8 @@ namespace MediaBrowser.InstallUtil
                                     var backupDir = Path.Combine(RootPath, "System.old");
                                     if (Directory.Exists(systemDir))
                                     {
+                                        Trace.TraceInformation("Creating backup by moving {0} to {1}", systemDir, backupDir);
+
                                         try
                                         {
                                             if (Directory.Exists(backupDir)) Directory.Delete(backupDir, true);
@@ -530,6 +538,7 @@ namespace MediaBrowser.InstallUtil
                                         }
                                         catch (Exception e)
                                         {
+                                            Trace.TraceError("Error deleting previous backup. {0}", e.Message);
                                             return new InstallationResult(false, "Could not delete previous backup directory.", e);
                                         }
 
@@ -539,6 +548,7 @@ namespace MediaBrowser.InstallUtil
                                         }
                                         catch (Exception e)
                                         {
+                                            Trace.TraceError("Error creating backup. {0}", e.Message);
                                             return new InstallationResult(false, "Could not move system directory to backup.", e);
                                         }
                                     }
@@ -563,12 +573,14 @@ namespace MediaBrowser.InstallUtil
                                         {
                                             if (retryCount < 3)
                                             {
+                                                Trace.TraceError("Extract attempt failed. Will retry...");
                                                 Thread.Sleep(250);
                                                 retryCount++;
                                             }
                                             else
                                             {
                                                 //Rollback
+                                                Trace.TraceError("Final extract attempt failed. Rolling back.");
                                                 RollBack(systemDir, backupDir);
                                                 return new InstallationResult(false, String.Format("Could not extract {0} to {1} after {2} attempts.", archive, RootPath, retryCount), e);
                                             }
@@ -599,12 +611,16 @@ namespace MediaBrowser.InstallUtil
             // get path to all users start menu
             var startMenu = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Media Browser 3");
             if (!Directory.Exists(startMenu)) Directory.CreateDirectory(startMenu);
+
+            Trace.TraceInformation("Creating start menu shortcut {0}", Path.Combine(startMenu, FriendlyName + ".lnk"));
+
             var product = new ShellShortcut(Path.Combine(startMenu, FriendlyName + ".lnk")) { Path = targetExe, Description = "Run " + FriendlyName };
             product.Save();
 
             if (PackageName == "MBServer")
             {
                 var path = Path.Combine(startMenu, "MB Dashboard.lnk");
+                Trace.TraceInformation("Creating dashboard shortcut {0}", path);
                 var dashboard = new ShellShortcut(path) { Path = @"http://localhost:8096/mediabrowser/dashboard/dashboard.html", Description = "Open the Media Browser Server Dashboard (configuration)" };
                 dashboard.Save();
 
@@ -621,6 +637,7 @@ namespace MediaBrowser.InstallUtil
         /// <param name="targetExe"></param>
         private InstallationResult CreateUninstaller(string uninstallPath, string targetExe)
         {
+            Trace.TraceInformation("Creating uninstaller shortcut");
             var parent = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", true);
             {
                 if (parent == null)
@@ -629,9 +646,12 @@ namespace MediaBrowser.InstallUtil
                     {
                         if (rootParent != null)
                         {
+                            Trace.TraceInformation("Root uninstall key did not exist.  Creating {0}", (rootParent.Name + @"\Uninstall"));
+
                             parent = rootParent.CreateSubKey("Uninstall");
                             if (parent == null)
                             {
+                                Trace.TraceError("Unable to create uninstall key {0}", (rootParent.Name + @"\Uninstall"));
                                 return new InstallationResult(false, "Unable to create Uninstall registry key.  Program is still installed sucessfully.");
                             }
                         }
@@ -649,6 +669,7 @@ namespace MediaBrowser.InstallUtil
 
                         if (key == null)
                         {
+                            Trace.TraceError("Unable to create uninstall key {0}\\{1}", parent.Name, guidText);
                             return new InstallationResult(false, String.Format("Unable to create uninstaller entry'{0}\\{1}'.  Program is still installed successfully.", @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", guidText));
                         }
 
@@ -672,6 +693,7 @@ namespace MediaBrowser.InstallUtil
                 }
                 catch (Exception ex)
                 {
+                    Trace.TraceError("Error writing uninstall information to registry. {0}", ex.Message);
                     return new InstallationResult(false, "An error occurred writing uninstall information to the registry.", ex);
                 }
             }

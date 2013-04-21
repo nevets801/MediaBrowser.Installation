@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
+using System.IO;
 using System.Net;
 using System.Threading.Tasks;
 using System.Windows;
@@ -19,10 +21,17 @@ namespace MediaBrowser.Updater
         public MainWindow()
         {
             InitializeComponent();
+            var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-InstallLogs");
+            if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
             var request = InstallUtil.Installer.ParseArgsAndWait(Environment.GetCommandLineArgs());
+            var logFile = Path.Combine(logPath, request.Product + "-Update.log");
+            if (File.Exists(logFile)) File.Delete(logFile);
+            Trace.Listeners.Add(new TextWriterTraceListener(logFile));
+            Trace.AutoFlush = true;
             request.ReportStatus = UpdateStatus;
             request.Progress = new ProgressUpdater(this);
             request.WebClient = MainClient;
+            Trace.TraceInformation("Creating install session for {0}", request.Product);
             Installer = new InstallUtil.Installer(request);
             DoUpdate(request.Archive);  // fire and forget so we get our window up
 

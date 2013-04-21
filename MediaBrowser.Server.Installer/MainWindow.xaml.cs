@@ -1,22 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Configuration;
-using System.Linq;
+using System.IO;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using MediaBrowser.InstallUtil.Entities;
-using MediaBrowser.InstallUtil.Extensions;
 
 namespace MediaBrowser.Server.Installer
 {
@@ -34,10 +21,17 @@ namespace MediaBrowser.Server.Installer
         public MainWindow()
         {
             InitializeComponent();
+            var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-InstallLogs");
+            if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
+            var logFile = Path.Combine(logPath, "Server-Install.log");
+            if (File.Exists(logFile)) File.Delete(logFile);
+            Trace.Listeners.Add(new TextWriterTraceListener(logFile));
+            Trace.AutoFlush = true;
             var request = InstallUtil.Installer.ParseArgsAndWait(Environment.GetCommandLineArgs());
             request.ReportStatus = UpdateStatus;
             request.Progress = new ProgressUpdater(this);
             request.WebClient = MainClient;
+            Trace.TraceInformation("Creating install session for {0}", request.Product);
             Installer = new InstallUtil.Installer(request);
             DoInstall(request.Archive);  // fire and forget so we get our window up
 
@@ -82,6 +76,7 @@ namespace MediaBrowser.Server.Installer
 
         private void btnCancel_Click(object sender, RoutedEventArgs e)
         {
+            Trace.TraceInformation("Installation Requested to be Cancelled by user.");
             this.Close();
         }
 
@@ -92,6 +87,7 @@ namespace MediaBrowser.Server.Installer
                 e.Cancel = true;
                 return;
             }
+
             if (MainClient.IsBusy)
             {
                 MainClient.CancelAsync();
