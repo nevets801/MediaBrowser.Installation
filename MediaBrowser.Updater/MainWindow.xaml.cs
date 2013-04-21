@@ -31,7 +31,7 @@ namespace MediaBrowser.Updater
             request.ReportStatus = UpdateStatus;
             request.Progress = new ProgressUpdater(this);
             request.WebClient = MainClient;
-            Trace.TraceInformation("Creating install session for {0}", request.Product);
+            Trace.TraceInformation("Creating update session for {0}", request.Product);
             Installer = new InstallUtil.Installer(request);
             DoUpdate(request.Archive);  // fire and forget so we get our window up
 

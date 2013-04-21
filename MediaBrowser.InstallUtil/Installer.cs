@@ -114,7 +114,7 @@ namespace MediaBrowser.InstallUtil
                 }
             }
             request.Archive = args.GetValueOrDefault("archive", null);
-            if (args.GetValueOrDefault("pismo", "true") == "false") request.InstallPismo = true;
+            request.InstallPismo = args.GetValueOrDefault("pismo", "true") == "true";
 
             request.Product = args.GetValueOrDefault("product", null) ?? ConfigurationManager.AppSettings["product"] ?? "server";
             request.PackageClass = (PackageVersionClass)Enum.Parse(typeof(PackageVersionClass), args.GetValueOrDefault("class", null) ?? ConfigurationManager.AppSettings["class"] ?? "Release");
