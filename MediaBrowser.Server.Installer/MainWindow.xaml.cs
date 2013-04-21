@@ -23,7 +23,7 @@ namespace MediaBrowser.Server.Installer
             InitializeComponent();
             var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-InstallLogs");
             if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
-            var logFile = Path.Combine(logPath, "Server-Install.log");
+            var logFile = Path.Combine(logPath, "server-install.log");
             if (File.Exists(logFile)) File.Delete(logFile);
             Trace.Listeners.Add(new TextWriterTraceListener(logFile));
             Trace.AutoFlush = true;

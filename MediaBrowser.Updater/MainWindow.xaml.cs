@@ -24,7 +24,7 @@ namespace MediaBrowser.Updater
             var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-InstallLogs");
             if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
             var request = InstallUtil.Installer.ParseArgsAndWait(Environment.GetCommandLineArgs());
-            var logFile = Path.Combine(logPath, request.Product + "-Update.log");
+            var logFile = Path.Combine(logPath, request.Product + "-update.log");
             if (File.Exists(logFile)) File.Delete(logFile);
             Trace.Listeners.Add(new TextWriterTraceListener(logFile));
             Trace.AutoFlush = true;
