@@ -95,6 +95,15 @@ namespace MediaBrowser.InstallUtil
 
         }
 
+        public static bool IsAdmin 
+        {
+            get
+            {
+                var principal = new WindowsPrincipal(WindowsIdentity.GetCurrent());
+                return principal.IsInRole(WindowsBuiltInRole.Administrator);
+            }
+        }
+
         /// <summary>
         /// Parse an argument string array into an installation request and wait on a calling process if there was one
         /// </summary>
