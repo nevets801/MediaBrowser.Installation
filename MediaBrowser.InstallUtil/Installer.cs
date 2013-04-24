@@ -7,7 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Security.AccessControl;
 using System.Security.Principal;
-using System.Text;
+using System.Management;
 using System.Threading;
 using System.Threading.Tasks;
 using Ionic.Zip;
@@ -304,12 +304,30 @@ namespace MediaBrowser.InstallUtil
                 // Now delete the pismo install files
                 Trace.TraceInformation("Deleting Pismo install files");
                 RemovePath(Path.Combine(RootPath, "Pismo"));
-
-
             }
+
+            // Update stats
+            UpdateStats();
 
             // And run
             return RunProgram();
+        }
+
+        protected void UpdateStats()
+        {
+            try
+            {
+                var result = MainClient.DownloadString(string.Format("http://www.mb3admin.com/admin/service/package/installed?mac={0}&product={1}&operation={2}", GetMacAddress(), PackageName, Operation));
+
+                if (result != "success")
+                {
+                Trace.TraceError("Error updating install stats.  Installation is still complete. "+result);
+                }
+            }
+            catch (Exception e)
+            {
+                Trace.TraceError("Error updating install stats.  Installation is still complete. "+e.Message);
+            }
         }
 
         protected async Task<InstallationResult> Extract(string archive)
@@ -417,6 +435,9 @@ namespace MediaBrowser.InstallUtil
                 var result = await Extract(archive);
                 if (!result.Success) return result;
             }
+
+            // Update stats
+            UpdateStats();
 
             // And run
             return RunProgram();
@@ -768,6 +789,34 @@ namespace MediaBrowser.InstallUtil
             }
 
             return true;
+        }
+        /// <summary>
+        /// Returns MAC Address from first Network Card in Computer
+        /// </summary>
+        /// <returns>[string] MAC Address</returns>
+        public string GetMacAddress()
+        {
+            var mc = new ManagementClass("Win32_NetworkAdapterConfiguration");
+            var moc = mc.GetInstances();
+            var macAddress = String.Empty;
+            foreach (ManagementObject mo in moc)
+            {
+                if (macAddress == String.Empty)  // only return MAC Address from first card
+                {
+                    try
+                    {
+                        if ((bool)mo["IPEnabled"]) macAddress = mo["MacAddress"].ToString();
+                    }
+                    catch
+                    {
+                        mo.Dispose();
+                        return "";
+                    }
+                }
+                mo.Dispose();
+            }
+
+            return macAddress.Replace(":", "");
         }
     }
 }
