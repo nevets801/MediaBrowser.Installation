@@ -261,7 +261,15 @@ namespace MediaBrowser.InstallUtil
 
             if (Path.GetExtension(archive) == ".msi")
             {
-                RunMsi(archive);
+                try
+                {
+                    RunMsi(archive);
+                }
+                catch (Exception e)
+                {
+                    Trace.TraceError("Error installing msi. "+e.Message);
+                    return new InstallationResult(false, e.Message, e);
+                }
             }
             else
             {
@@ -429,7 +437,15 @@ namespace MediaBrowser.InstallUtil
 
             if (Path.GetExtension(archive) == ".msi")
             {
-                RunMsi(archive);
+                try
+                {
+                    RunMsi(archive);
+                }
+                catch (Exception e)
+                {
+                    Trace.TraceError("Error installing msi. " + e.Message);
+                    return new InstallationResult(false, e.Message, e);
+                }
             }
             else
             {
