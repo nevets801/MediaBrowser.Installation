@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
@@ -28,7 +29,13 @@ namespace MediaBrowser.Classic.Installer
             else
             {
                 InitializeComponent();
+                var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-InstallLogs");
+                if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
                 var request = InstallUtil.Installer.ParseArgsAndWait(Environment.GetCommandLineArgs());
+                var logFile = Path.Combine(logPath, request.Product + "-install.log");
+                if (File.Exists(logFile)) File.Delete(logFile);
+                Trace.Listeners.Add(new TextWriterTraceListener(logFile));
+                Trace.AutoFlush = true;
                 request.ReportStatus = UpdateStatus;
                 request.Progress = new ProgressUpdater(this);
                 request.WebClient = MainClient;

@@ -380,12 +380,14 @@ namespace MediaBrowser.InstallUtil
             // Run in silent mode and wait for it to finish
             // First uninstall any previous version
             ReportStatus("Uninstalling any previous version...");
-            var logfile = Path.Combine(RootPath, "logs", "UnInstall.log");
-            var uninstaller = Process.Start("msiexec", "/x \"" + archive + "\" /quiet /le \"" + logfile + "\"");
-            if (uninstaller != null) uninstaller.WaitForExit();
+            var logfile = Path.Combine(RootPath, "logs", "MsiUnInstall.log");
+            Trace.TraceInformation("Calling msi uninstall");
+            var uninstaller = Process.Start("msiexec.exe", "/x \"" + archive + "\" /quiet /le \"" + logfile + "\"");
+            if (uninstaller != null) uninstaller.WaitForExit(); else Trace.TraceError("Uninstall start returned null...");
             // And now installer
+            Trace.TraceInformation("Calling msi install");
             ReportStatus("Installing " + FriendlyName);
-            logfile = Path.Combine(RootPath, "logs", "Install.log");
+            logfile = Path.Combine(RootPath, "logs", "MsiInstall.log");
             var installer = Process.Start(archive, "/quiet /le \"" + logfile + "\"");
             installer.WaitForExit();  // let this throw if there is a problem
             
