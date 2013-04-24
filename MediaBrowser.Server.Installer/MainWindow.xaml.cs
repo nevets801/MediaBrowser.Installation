@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -20,21 +22,40 @@ namespace MediaBrowser.Server.Installer
 
         public MainWindow()
         {
-            InitializeComponent();
-            var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-InstallLogs");
-            if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
-            var logFile = Path.Combine(logPath, "server-install.log");
-            if (File.Exists(logFile)) File.Delete(logFile);
-            Trace.Listeners.Add(new TextWriterTraceListener(logFile));
-            Trace.AutoFlush = true;
-            var request = InstallUtil.Installer.ParseArgsAndWait(Environment.GetCommandLineArgs());
-            request.ReportStatus = UpdateStatus;
-            request.Progress = new ProgressUpdater(this);
-            request.WebClient = MainClient;
-            Trace.TraceInformation("Creating install session for {0}", request.Product);
-            Installer = new InstallUtil.Installer(request);
-            DoInstall(request.Archive);  // fire and forget so we get our window up
+            if (!InstallUtil.Installer.IsAdmin)
+            {
+                RunAsAdmin();
+            }
+            else
+            {
+                InitializeComponent();
+                var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-InstallLogs");
+                if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
+                var logFile = Path.Combine(logPath, "server-install.log");
+                if (File.Exists(logFile)) File.Delete(logFile);
+                Trace.Listeners.Add(new TextWriterTraceListener(logFile));
+                Trace.AutoFlush = true;
+                var request = InstallUtil.Installer.ParseArgsAndWait(Environment.GetCommandLineArgs());
+                request.ReportStatus = UpdateStatus;
+                request.Progress = new ProgressUpdater(this);
+                request.WebClient = MainClient;
+                Trace.TraceInformation("Creating install session for {0}", request.Product);
+                Installer = new InstallUtil.Installer(request);
+                DoInstall(request.Archive); // fire and forget so we get our window up
+            }
+        }
 
+        private void RunAsAdmin()
+        {
+            var info = new ProcessStartInfo
+            {
+                FileName = Assembly.GetExecutingAssembly().CodeBase,
+                Arguments = string.Join(" ", Environment.GetCommandLineArgs().Skip(1)),
+                Verb = "runas"
+            };
+
+            Process.Start(info);
+            SystemClose();
         }
 
         private class ProgressUpdater : IProgress<double>
