@@ -38,7 +38,7 @@ namespace MediaBrowser.InstallUtil
 
         protected InstallOperation Operation;
 
-        protected string TempLocation = Path.Combine(Path.GetTempPath(), "MediaBrowser");
+        protected static string TempLocation = Path.Combine(Path.GetTempPath(), "MediaBrowser");
 
         protected WebClient MainClient;
 
@@ -99,8 +99,7 @@ namespace MediaBrowser.InstallUtil
         {
             get
             {
-                var principal = new WindowsPrincipal(WindowsIdentity.GetCurrent());
-                return principal.IsInRole(WindowsBuiltInRole.Administrator);
+                return Environment.GetCommandLineArgs().Last() == "admin=true";
             }
         }
 
@@ -157,13 +156,13 @@ namespace MediaBrowser.InstallUtil
         /// Execute the install process
         /// </summary>
         /// <returns></returns>
-        public async Task<InstallationResult> DoInstall(string archive)
+        public async Task<InstallationResult> DoInstall()
         {
             Trace.TraceInformation("Installing {0}", FriendlyName);
             ReportStatus(String.Format("Installing {0}...", FriendlyName));
 
             // Determine Package version
-            var version = archive == null ? await GetPackageVersion() : null;
+            var version = Archive == null ? await GetPackageVersion() : null;
             ActualVersion = version != null ? version.version : new Version(3, 0);
 
             Trace.TraceInformation("Version is {0}", ActualVersion);
@@ -227,14 +226,14 @@ namespace MediaBrowser.InstallUtil
             }
 
             // Download if we don't already have it
-            if (archive == null)
+            if (Archive == null)
             {
                 Trace.TraceInformation("Downloading {0} version {1}", FriendlyName, ActualVersion);
                 ReportStatus(String.Format("Downloading {0} (version {1})...", FriendlyName, ActualVersion));
                 try
                 {
-                    archive = await DownloadPackage(version);
-                    if (archive != null) Trace.TraceInformation("Successfully downloaded version {0}", ActualVersion);
+                    Archive = await DownloadPackage(version);
+                    if (Archive != null) Trace.TraceInformation("Successfully downloaded version {0}", ActualVersion);
                 }
                 catch (Exception e)
                 {
@@ -244,10 +243,10 @@ namespace MediaBrowser.InstallUtil
             }
             else
             {
-                Trace.TraceInformation("Archive to install was supplied {0}", archive);
+                Trace.TraceInformation("Archive to install was supplied {0}", Archive);
             }
 
-            if (archive == null) return new InstallationResult(false);  //we canceled or had an error that was already reported
+            if (Archive == null) return new InstallationResult(false);  //we canceled or had an error that was already reported
 
             // Create our main directory and set permissions - this should only happen on install
             if (!Directory.Exists(RootPath))
@@ -259,11 +258,11 @@ namespace MediaBrowser.InstallUtil
                 await SetPermissions(info);
             }
 
-            if (Path.GetExtension(archive) == ".msi")
+            if (Path.GetExtension(Archive) == ".msi")
             {
                 try
                 {
-                    RunMsi(archive);
+                    RunMsi(Archive);
                 }
                 catch (Exception e)
                 {
@@ -274,7 +273,7 @@ namespace MediaBrowser.InstallUtil
             else
             {
                 // Extract
-                var result = await Extract(archive);
+                var result = await Extract(Archive);
                 if (!result.Success) return result;
 
                 // Create shortcut
@@ -424,22 +423,17 @@ namespace MediaBrowser.InstallUtil
         /// Execute the update process
         /// </summary>
         /// <returns></returns>
-        public async Task<InstallationResult> DoUpdate(string archive)
+        public async Task<InstallationResult> DoUpdate()
         {
-            if (string.IsNullOrEmpty(archive))
-            {
-                Trace.TraceError("Update called with no archive.");
-                throw new ArgumentNullException("archive");
-            }
 
             Trace.TraceInformation("Updating {0}...", FriendlyName);
             ReportStatus(String.Format("Updating {0}...", FriendlyName));
 
-            if (Path.GetExtension(archive) == ".msi")
+            if (Path.GetExtension(Archive) == ".msi")
             {
                 try
                 {
-                    RunMsi(archive);
+                    RunMsi(Archive);
                 }
                 catch (Exception e)
                 {
@@ -450,7 +444,7 @@ namespace MediaBrowser.InstallUtil
             else
             {
                 // Extract
-                var result = await Extract(archive);
+                var result = await Extract(Archive);
                 if (!result.Success) return result;
             }
 
@@ -763,7 +757,7 @@ namespace MediaBrowser.InstallUtil
         /// <summary>
         /// Publicly accessible version to clear our temp location
         /// </summary>
-        public void ClearTempLocation()
+        public static void ClearTempLocation()
         {
             ClearTempLocation(TempLocation);
         }
@@ -772,7 +766,7 @@ namespace MediaBrowser.InstallUtil
         /// Clear out (delete recursively) the supplied temp location
         /// </summary>
         /// <param name="location"></param>
-        protected void ClearTempLocation(string location)
+        protected static void ClearTempLocation(string location)
         {
             if (Directory.Exists(location))
             {

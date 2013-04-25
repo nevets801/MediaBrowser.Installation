@@ -18,8 +18,6 @@ namespace MediaBrowser.Classic.Installer
 
         protected WebClient MainClient = new WebClient();
 
-        protected InstallUtil.Installer Installer;
-
         public MainWindow()
         {
             if (!InstallUtil.Installer.IsAdmin)
@@ -39,8 +37,7 @@ namespace MediaBrowser.Classic.Installer
                 request.ReportStatus = UpdateStatus;
                 request.Progress = new ProgressUpdater(this);
                 request.WebClient = MainClient;
-                Installer = new InstallUtil.Installer(request);
-                DoInstall(request.Archive);  // fire and forget so we get our window up
+                DoInstall(new InstallUtil.Installer(request));  // fire and forget so we get our window up
                 
             }
 
@@ -51,7 +48,7 @@ namespace MediaBrowser.Classic.Installer
             var info = new ProcessStartInfo
                            {
                                FileName = Assembly.GetExecutingAssembly().CodeBase,
-                               Arguments = string.Join(" ", Environment.GetCommandLineArgs().Skip(1)),
+                               Arguments = string.Join(" ", Environment.GetCommandLineArgs().Skip(1)) + " admin=true",
                                Verb = "runas"
                            };
 
@@ -83,9 +80,9 @@ namespace MediaBrowser.Classic.Installer
             lblStatus.Text = message;
         }
 
-        private async Task DoInstall(string archive)
+        private async Task DoInstall(InstallUtil.Installer installer)
         {
-            var result = await Installer.DoInstall(archive);
+            var result = await installer.DoInstall();
             if (!result.Success)
             {
                 SystemClose(result.Message + "\n\n" + result.Exception.GetType() + "\n" + result.Exception.Message);
@@ -117,7 +114,7 @@ namespace MediaBrowser.Classic.Installer
                 }
             }
             MainClient.Dispose();
-            Installer.ClearTempLocation();
+            InstallUtil.Installer.ClearTempLocation();
             base.OnClosing(e);
         }
 

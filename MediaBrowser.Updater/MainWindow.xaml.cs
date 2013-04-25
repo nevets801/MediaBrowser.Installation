@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Threading.Tasks;
 using System.Windows;
+using MediaBrowser.InstallUtil;
 
 namespace MediaBrowser.Updater
 {
@@ -15,8 +16,6 @@ namespace MediaBrowser.Updater
         protected bool SystemClosing = false;
 
         protected WebClient MainClient = new WebClient();
-
-        protected InstallUtil.Installer Installer;
 
         public MainWindow()
         {
@@ -32,8 +31,7 @@ namespace MediaBrowser.Updater
             request.Progress = new ProgressUpdater(this);
             request.WebClient = MainClient;
             Trace.TraceInformation("Creating update session for {0}", request.Product);
-            Installer = new InstallUtil.Installer(request);
-            DoUpdate(request.Archive);  // fire and forget so we get our window up
+            DoUpdate(new Installer(request));  // fire and forget so we get our window up
 
         }
 
@@ -61,9 +59,9 @@ namespace MediaBrowser.Updater
             lblStatus.Text = message;
         }
 
-        private async Task DoUpdate(string archive)
+        private async Task DoUpdate(Installer installer)
         {
-            var result = await Installer.DoUpdate(archive);
+            var result = await installer.DoUpdate();
             if (!result.Success)
             {
                 SystemClose(result.Message + "\n\n" + result.Exception.GetType() + "\n" + result.Exception.Message);
