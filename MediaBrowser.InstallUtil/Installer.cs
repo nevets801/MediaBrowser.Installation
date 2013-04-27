@@ -252,7 +252,7 @@ namespace MediaBrowser.InstallUtil
             if (!Directory.Exists(RootPath))
             {
                 Trace.TraceInformation("Creating directory {0}", RootPath);
-                ReportStatus("Setting access rights.  This may take a minute...");
+                ReportStatus("Configuring directories.  This may take a minute...");
                 var info = Directory.CreateDirectory(RootPath);
                 Trace.TraceInformation("Attempting to set access rights on {0}", RootPath);
                 await SetPermissions(info);
