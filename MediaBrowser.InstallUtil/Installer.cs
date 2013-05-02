@@ -262,7 +262,8 @@ namespace MediaBrowser.InstallUtil
             {
                 try
                 {
-                    RunMsi(Archive);
+                    var result = await RunMsi(Archive);
+                    if (!result.Success) return result;
                 }
                 catch (Exception e)
                 {
@@ -378,26 +379,35 @@ namespace MediaBrowser.InstallUtil
             return new InstallationResult();
         }
 
-        protected void RunMsi(string archive)
+        protected async Task<InstallationResult> RunMsi(string archive)
         {
-            Trace.TraceInformation("Archive is MSI installer {0}", archive);
-            var logPath = Path.Combine(RootPath, "Logs");
-            if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
+            try
+            {
+                Trace.TraceInformation("Archive is MSI installer {0}", archive);
+                var logPath = Path.Combine(RootPath, "Logs");
+                if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
 
-            // Run in silent mode and wait for it to finish
-            // First uninstall any previous version
-            ReportStatus("Uninstalling any previous version...");
-            var logfile = Path.Combine(RootPath, "logs", "MsiUnInstall.log");
-            Trace.TraceInformation("Calling msi uninstall");
-            var uninstaller = Process.Start("msiexec.exe", "/x \"" + archive + "\" /quiet /le \"" + logfile + "\"");
-            if (uninstaller != null) uninstaller.WaitForExit(); else Trace.TraceError("Uninstall start returned null...");
-            // And now installer
-            Trace.TraceInformation("Calling msi install");
-            ReportStatus("Installing " + FriendlyName);
-            logfile = Path.Combine(RootPath, "logs", "MsiInstall.log");
-            var installer = Process.Start(archive, "/quiet /le \"" + logfile + "\"");
-            installer.WaitForExit();  // let this throw if there is a problem
-            
+                // Run in silent mode and wait for it to finish
+                // First uninstall any previous version
+                ReportStatus("Uninstalling any previous version...");
+                var logfile = Path.Combine(RootPath, "logs", "MsiUnInstall.log");
+                Trace.TraceInformation("Calling msi uninstall");
+                var uninstaller = Process.Start("msiexec.exe", "/x \"" + archive + "\" /quiet /le \"" + logfile + "\"");
+                if (uninstaller != null) uninstaller.WaitForExit();
+                else Trace.TraceError("Uninstall start returned null...");
+                // And now installer
+                Trace.TraceInformation("Calling msi install");
+                ReportStatus("Installing " + FriendlyName);
+                logfile = Path.Combine(RootPath, "logs", "MsiInstall.log");
+                var installer = Process.Start(archive, "/quiet /le \"" + logfile + "\"");
+                installer.WaitForExit(); // let this throw if there is a problem
+            }
+            catch (Exception e)
+            {
+                return new InstallationResult(false, "Error running MSI", e);
+            }
+
+            return new InstallationResult();
         }
 
         protected InstallationResult RunProgram()
@@ -433,7 +443,8 @@ namespace MediaBrowser.InstallUtil
             {
                 try
                 {
-                    RunMsi(Archive);
+                    var result = await RunMsi(Archive);
+                    if (!result.Success) return result;
                 }
                 catch (Exception e)
                 {
