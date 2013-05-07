@@ -181,7 +181,7 @@ namespace MediaBrowser.Uninstaller
                 }
             }
 
-            var rootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "MediaBrowser" + RootSuffix);
+            var rootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser" + RootSuffix);
 
             lblHeading.Content = "Removing System Files...";
             if (cbxRemoveAll.IsChecked == true)
