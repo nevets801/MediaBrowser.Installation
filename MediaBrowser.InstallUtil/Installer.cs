@@ -31,8 +31,8 @@ namespace MediaBrowser.InstallUtil
         protected string FriendlyName = "Media Browser Server";
         protected string Archive = null;
         protected bool InstallPismo = true;
-        protected string RootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "MediaBrowser-Server");
-        protected string EndInstallPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "MediaBrowser-Server");
+        protected string RootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-Server");
+        protected string EndInstallPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-Server");
         protected IProgress<double> Progress;
         protected Action<string> ReportStatus; 
 
@@ -69,17 +69,17 @@ namespace MediaBrowser.InstallUtil
                     RootSuffix = "-Theater";
                     TargetExe = "MediaBrowser.UI.exe";
                     FriendlyName = "Media Browser Theater";
-                    RootPath = EndInstallPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "MediaBrowser" + RootSuffix);
+                    RootPath = EndInstallPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser" + RootSuffix);
                     EndInstallPath = Path.Combine(RootPath, "system");
                     break;
 
                 case "mbc":
                     PackageName = "MBClassic";
-                    RootSuffix = "-WMC";
+                    RootSuffix = "-Classic";
                     TargetExe = "ehshell.exe";
                     TargetArgs = @"/nostartupanimation /entrypoint:{CE32C570-4BEC-4aeb-AD1D-CF47B91DE0B2}\{FC9ABCCC-36CB-47ac-8BAB-03E8EF5F6F22}";
                     FriendlyName = "Media Browser Classic";
-                    RootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "MediaBrowser" + RootSuffix);
+                    RootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser" + RootSuffix);
                     EndInstallPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "ehome");
                     break;
 
@@ -88,7 +88,7 @@ namespace MediaBrowser.InstallUtil
                     RootSuffix = "-Server";
                     TargetExe = "MediaBrowser.ServerApplication.exe";
                     FriendlyName = "Media Browser Server";
-                    RootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "MediaBrowser" + RootSuffix);
+                    RootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser" + RootSuffix);
                     EndInstallPath = Path.Combine(RootPath, "system");
                     break;
             }
@@ -254,8 +254,8 @@ namespace MediaBrowser.InstallUtil
                 Trace.TraceInformation("Creating directory {0}", RootPath);
                 ReportStatus("Configuring directories.  This may take a minute...");
                 var info = Directory.CreateDirectory(RootPath);
-                Trace.TraceInformation("Attempting to set access rights on {0}", RootPath);
-                await SetPermissions(info);
+                //Trace.TraceInformation("Attempting to set access rights on {0}", RootPath);
+                //await SetPermissions(info);
             }
 
             if (Path.GetExtension(Archive) == ".msi")
@@ -389,16 +389,16 @@ namespace MediaBrowser.InstallUtil
 
                 // Run in silent mode and wait for it to finish
                 // First uninstall any previous version
-                ReportStatus("Uninstalling any previous version...");
-                var logfile = Path.Combine(RootPath, "logs", "MsiUnInstall.log");
-                Trace.TraceInformation("Calling msi uninstall");
-                var uninstaller = Process.Start("msiexec.exe", "/x \"" + archive + "\" /quiet /le \"" + logfile + "\"");
-                if (uninstaller != null) uninstaller.WaitForExit();
-                else Trace.TraceError("Uninstall start returned null...");
+                //ReportStatus("Uninstalling any previous version...");
+                //var logfile = Path.Combine(RootPath, "logs", "MsiUnInstall.log");
+                //Trace.TraceInformation("Calling msi uninstall");
+                //var uninstaller = Process.Start("msiexec.exe", "/x \"" + archive + "\" /quiet /le \"" + logfile + "\"");
+                //if (uninstaller != null) uninstaller.WaitForExit();
+                //else Trace.TraceError("Uninstall start returned null...");
                 // And now installer
                 Trace.TraceInformation("Calling msi install");
                 ReportStatus("Installing " + FriendlyName);
-                logfile = Path.Combine(RootPath, "logs", "MsiInstall.log");
+                var logfile = Path.Combine(RootPath, "logs", "MsiInstall.log");
                 var installer = Process.Start(archive, "/quiet /le \"" + logfile + "\"");
                 installer.WaitForExit(); // let this throw if there is a problem
             }
