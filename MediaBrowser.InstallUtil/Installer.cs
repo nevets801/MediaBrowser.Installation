@@ -716,14 +716,13 @@ namespace MediaBrowser.InstallUtil
 
                     try
                     {
-                        const string guidText = "{4E76DB4E-1BB9-4A7B-860C-7940779CF7A0}";
-                        key = parent.OpenSubKey(guidText, true) ??
-                              parent.CreateSubKey(guidText);
+                        key = parent.OpenSubKey(FriendlyName, true) ??
+                              parent.CreateSubKey(FriendlyName);
 
                         if (key == null)
                         {
-                            Trace.TraceError("Unable to create uninstall key {0}\\{1}", parent.Name, guidText);
-                            return new InstallationResult(false, String.Format("Unable to create uninstaller entry'{0}\\{1}'.  Program is still installed successfully.", @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", guidText));
+                            Trace.TraceError("Unable to create uninstall key {0}\\{1}", parent.Name, FriendlyName);
+                            return new InstallationResult(false, String.Format("Unable to create uninstaller entry'{0}\\{1}'.  Program is still installed successfully.", @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", FriendlyName));
                         }
 
                         key.SetValue("DisplayName", FriendlyName);
