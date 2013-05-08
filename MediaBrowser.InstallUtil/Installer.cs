@@ -79,7 +79,7 @@ namespace MediaBrowser.InstallUtil
                     TargetExe = "ehshell.exe";
                     TargetArgs = @"/nostartupanimation /entrypoint:{CE32C570-4BEC-4aeb-AD1D-CF47B91DE0B2}\{FC9ABCCC-36CB-47ac-8BAB-03E8EF5F6F22}";
                     FriendlyName = "Media Browser Classic";
-                    RootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser" + RootSuffix);
+                    RootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "MediaBrowser" + RootSuffix);
                     EndInstallPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "ehome");
                     break;
 
