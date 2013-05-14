@@ -325,7 +325,7 @@ namespace MediaBrowser.InstallUtil
         {
             try
             {
-                var result = MainClient.DownloadString(string.Format("http://www.mb3admin.com/admin/service/package/installed?mac={0}&product={1}&operation={2}", GetMacAddress(), PackageName, Operation));
+                var result = MainClient.DownloadString(string.Format("http://www.mb3admin.com/admin/service/package/installed?mac={0}&product={1}&operation={2}&version={3}", GetMacAddress(), PackageName, Operation, ActualVersion));
 
                 if (result != "success")
                 {
@@ -436,7 +436,8 @@ namespace MediaBrowser.InstallUtil
         public async Task<InstallationResult> DoUpdate()
         {
 
-            Trace.TraceInformation("Updating {0}...", FriendlyName);
+            ActualVersion = RequestedVersion;
+            Trace.TraceInformation("Updating {0} to version {1}...", FriendlyName, ActualVersion);
             ReportStatus(String.Format("Updating {0}...", FriendlyName));
 
             if (Path.GetExtension(Archive) == ".msi")
