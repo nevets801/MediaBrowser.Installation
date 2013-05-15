@@ -610,7 +610,7 @@ namespace MediaBrowser.InstallUtil
                                     // And extract
                                     var retryCount = 0;
                                     var success = false;
-                                    while (!success && retryCount < 3)
+                                    while (!success && retryCount < 4)
                                     {
                                         try
                                         {
@@ -627,14 +627,14 @@ namespace MediaBrowser.InstallUtil
                                         {
                                             if (retryCount < 3)
                                             {
-                                                Trace.TraceError("Extract attempt failed. Will retry...");
+                                                Trace.TraceError("Extract attempt failed. Will retry... Error: "+e.Message);
                                                 Thread.Sleep(250);
                                                 retryCount++;
                                             }
                                             else
                                             {
                                                 //Rollback
-                                                Trace.TraceError("Final extract attempt failed. Rolling back.");
+                                                Trace.TraceError("Final extract attempt failed. Rolling back. Error: "+e.Message);
                                                 RollBack(systemDir, backupDir);
                                                 return new InstallationResult(false, String.Format("Could not extract {0} to {1} after {2} attempts.", archive, RootPath, retryCount), e);
                                             }
