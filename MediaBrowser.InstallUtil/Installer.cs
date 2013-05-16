@@ -399,7 +399,7 @@ namespace MediaBrowser.InstallUtil
                 Trace.TraceInformation("Calling msi install");
                 ReportStatus("Installing " + FriendlyName);
                 var logfile = Path.Combine(RootPath, "logs", "MsiInstall.log");
-                var installer = Process.Start(archive, "/quiet /le \"" + logfile + "\"");
+                var installer = Process.Start(archive, "/quiet /l \"" + logfile + "\"");
                 installer.WaitForExit(); // let this throw if there is a problem
             }
             catch (Exception e)
