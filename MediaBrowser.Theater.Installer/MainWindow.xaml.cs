@@ -57,7 +57,7 @@ namespace MediaBrowser.Theater.Installer
         {
             var info = new ProcessStartInfo
             {
-                FileName = Assembly.GetExecutingAssembly().CodeBase,
+                FileName = Process.GetCurrentProcess().MainModule.FileName,
                 Arguments = string.Join(" ", Environment.GetCommandLineArgs().Skip(1)) + " admin=true",
                 Verb = "runas"
             };
