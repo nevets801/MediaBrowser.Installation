@@ -458,6 +458,10 @@ namespace MediaBrowser.InstallUtil
                 // Extract
                 var result = await Extract(Archive);
                 if (!result.Success) return result;
+
+                // Now delete the pismo install files - we didn't need them
+                Trace.TraceInformation("Deleting Pismo install files");
+                RemovePath(Path.Combine(RootPath, "Pismo"));
             }
 
             // Update stats
