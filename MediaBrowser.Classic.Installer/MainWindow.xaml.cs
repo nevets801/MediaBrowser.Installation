@@ -100,21 +100,28 @@ namespace MediaBrowser.Classic.Installer
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
-            if (!SystemClosing && MessageBox.Show("Cancel Installation - Are you sure?", "Cancel", MessageBoxButton.YesNo) == MessageBoxResult.No)
+            try
             {
-                e.Cancel = true;
-                return;
-            }
-            if (MainClient.IsBusy)
-            {
-                MainClient.CancelAsync();
-                while (MainClient.IsBusy)
+                if (!SystemClosing && MessageBox.Show("Cancel Installation - Are you sure?", "Cancel", MessageBoxButton.YesNo) == MessageBoxResult.No)
                 {
-                    // wait to finish
+                    e.Cancel = true;
+                    return;
                 }
+                if (MainClient.IsBusy)
+                {
+                    MainClient.CancelAsync();
+                    while (MainClient.IsBusy)
+                    {
+                        // wait to finish
+                    }
+                }
+                MainClient.Dispose();
+                InstallUtil.Installer.ClearTempLocation();
             }
-            MainClient.Dispose();
-            InstallUtil.Installer.ClearTempLocation();
+            catch (Exception ex)
+            {
+                Trace.TraceError("Error shutting down - " + ex.GetType().Name + " - " + ex.Message);
+            }
             base.OnClosing(e);
         }
 
