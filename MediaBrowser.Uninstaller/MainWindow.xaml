@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Uninstall Media Browser" Height="412.686" Width="633.955" WindowStyle="None">
     <Grid>
-        <Image HorizontalAlignment="Center" Height="154" Margin="35,15,35,0" VerticalAlignment="Top" Width="541" Source="/Images/mb3logo800.png" Opacity="0.5"/>
+        <Image HorizontalAlignment="Center" Height="111" Margin="51,34,33,0" VerticalAlignment="Top" Width="542" Source="/Images/mb3logo800.png" Opacity="0.5"/>
         <Label x:Name="lblHeading" Content="Uninstall " HorizontalAlignment="Left" Margin="51,169,0,0" VerticalAlignment="Top" RenderTransformOrigin="0.478,-2.753" Height="44" Width="533" FontSize="24"/>
         <Button x:Name="btnUninstall" Content="Uninstall" HorizontalAlignment="Left" Margin="505,356,0,0" VerticalAlignment="Top" Width="91" IsDefault="True" RenderTransformOrigin="0.991,-1.041" Click="btnUninstall_Click"/>
         <Button x:Name="btnCancel" Content="Cancel" HorizontalAlignment="Left" Margin="412,356,0,0" VerticalAlignment="Top" Width="75" IsCancel="True" Click="btnCancel_Click"/>
