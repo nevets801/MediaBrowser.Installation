@@ -33,6 +33,7 @@ namespace MediaBrowser.InstallUtil
         protected bool InstallPismo = true;
         protected string RootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-Server");
         protected string EndInstallPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-Server");
+        protected string StartMenuPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Media Browser 3");
         protected IProgress<double> Progress;
         protected Action<string> ReportStatus; 
 
@@ -666,8 +667,8 @@ namespace MediaBrowser.InstallUtil
         /// <param name="targetExe"></param>
         protected InstallationResult CreateShortcuts(string targetExe)
         {
-            // get path to all users start menu
-            var startMenu = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Media Browser 3");
+            // get path to users start menu
+            var startMenu = StartMenuPath;
             if (!Directory.Exists(startMenu)) Directory.CreateDirectory(startMenu);
 
             Trace.TraceInformation("Creating start menu shortcut {0}", Path.Combine(startMenu, FriendlyName + ".lnk"));
