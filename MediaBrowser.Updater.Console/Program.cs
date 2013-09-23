@@ -23,7 +23,7 @@ namespace MediaBrowser.Updater.Console
             request.ReportStatus = UpdateStatus;
             request.Progress = new Progress<double>();
             request.WebClient = MainClient;
-            Trace.TraceInformation("Creating update session for {0}", request.Product);
+            Trace.TraceInformation("Creating console update session for {0}", request.Product);
             Task.WaitAll(DoUpdate(new Installer(request)));
         }
 
