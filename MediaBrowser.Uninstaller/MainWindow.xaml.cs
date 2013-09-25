@@ -145,6 +145,25 @@ namespace MediaBrowser.Uninstaller
                         }
                     }
                 }
+
+                // Now call back to un-install the service in case it was installed
+                lblHeading.Content = "Removing Service Installation...";
+                var info = new ProcessStartInfo
+                               {
+                                   Arguments = "-uninstallservice",
+                                   FileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-Server", "System", "MediaBrowser.ServerApplication.exe"),
+                                   Verb = "runas"
+                               };
+                server = Process.Start(info);
+                try
+                {
+                    server.WaitForExit();
+                }
+                catch (ArgumentException)
+                {
+                    // already gone
+                }
+
             }
             else
             {
