@@ -345,38 +345,23 @@ namespace MediaBrowser.InstallUtil
         {
             Trace.TraceInformation("Starting extract package.");
             ReportStatus("Extracting Package...");
-            var retryCount = 0;
-            var success = false;
-            while (!success && retryCount < 3)
-            {
-                var result = await ExtractPackage(archive);
+            var result = await ExtractPackage(archive);
 
-                if (!result.Success)
-                {
-                    if (retryCount < 3)
-                    {
-                        Trace.TraceError("Extract attempt failed. Will retry...");
-                        retryCount++;
-                        Thread.Sleep(500);
-                    }
-                    else
-                    {
-                        Trace.TraceError("Final extract failure.  Installation aborting.");
-                        // Delete archive even if failed so we don't try again with this one
-                        TryDelete(archive);
-                        return result;
-                    }
-                }
-                else
-                {
-                    success = true;
-                    Trace.TraceInformation("Extract successful.  Will now delete archive {0}", archive);
-                    // We're done with it so delete it (this is necessary for update operations)
-                    TryDelete(archive);
-                    // Also be sure there isn't an old update lying around
-                    Trace.TraceInformation("Deleting any old updates as well.");
-                    RemovePath(Path.Combine(RootPath, "Updates"));
-                }
+            if (!result.Success)
+            {
+                Trace.TraceError("Final extract failure.  Installation aborting.");
+                // Delete archive even if failed so we don't try again with this one
+                TryDelete(archive);
+                return result;
+            }
+            else
+            {
+                Trace.TraceInformation("Extract successful.  Will now delete archive {0}", archive);
+                // We're done with it so delete it (this is necessary for update operations)
+                TryDelete(archive);
+                // Also be sure there isn't an old update lying around
+                Trace.TraceInformation("Deleting any old updates as well.");
+                RemovePath(Path.Combine(RootPath, "Updates"));
             }
 
             return new InstallationResult();
@@ -617,7 +602,7 @@ namespace MediaBrowser.InstallUtil
                                     // And extract
                                     var retryCount = 0;
                                     var success = false;
-                                    while (!success && retryCount < 4)
+                                    while (!success)
                                     {
                                         try
                                         {
