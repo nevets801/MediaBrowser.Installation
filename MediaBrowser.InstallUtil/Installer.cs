@@ -606,13 +606,11 @@ namespace MediaBrowser.InstallUtil
                                     {
                                         try
                                         {
-                                            using (var archiveFile = SevenZipArchive.Open(archive))
+                                            using (var fs = File.OpenRead(archive))
+                                            using (var reader = ReaderFactory.Open(fs))
                                             {
-                                                using (var reader = archiveFile.ExtractAllEntries())
-                                                {
-                                                    reader.WriteAllToDirectory(RootPath, ExtractOptions.ExtractFullPath | ExtractOptions.Overwrite);
-                                                    success = true;
-                                                }
+                                                reader.WriteAllToDirectory(RootPath, ExtractOptions.ExtractFullPath | ExtractOptions.Overwrite);
+                                                success = true;
                                             }
                                         }
                                         catch (Exception e)
