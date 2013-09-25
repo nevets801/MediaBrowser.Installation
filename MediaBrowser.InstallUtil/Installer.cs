@@ -10,7 +10,9 @@ using System.Security.Principal;
 using System.Management;
 using System.Threading;
 using System.Threading.Tasks;
-using Ionic.Zip;
+using SharpCompress.Archive.SevenZip;
+using SharpCompress.Common;
+using SharpCompress.Reader;
 using MediaBrowser.InstallUtil.Entities;
 using MediaBrowser.InstallUtil.Shortcuts;
 using MediaBrowser.InstallUtil.Extensions;
@@ -619,11 +621,11 @@ namespace MediaBrowser.InstallUtil
                                     {
                                         try
                                         {
-                                            using (var fileStream = File.OpenRead(archive))
+                                            using (var archiveFile = SevenZipArchive.Open(archive))
                                             {
-                                                using (var zipFile = ZipFile.Read(fileStream))
+                                                using (var reader = archiveFile.ExtractAllEntries())
                                                 {
-                                                    zipFile.ExtractAll(RootPath, ExtractExistingFileAction.OverwriteSilently);
+                                                    reader.WriteAllToDirectory(RootPath, ExtractOptions.ExtractFullPath | ExtractOptions.Overwrite);
                                                     success = true;
                                                 }
                                             }
