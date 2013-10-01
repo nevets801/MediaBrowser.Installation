@@ -32,7 +32,6 @@ namespace MediaBrowser.InstallUtil
         protected string TargetArgs = "";
         protected string FriendlyName = "Media Browser Server";
         protected string Archive = null;
-        protected bool InstallPismo = true;
         protected static string AppDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         protected static string StartMenuFolder = Environment.GetFolderPath(Environment.SpecialFolder.StartMenu);
         protected string RootPath = Path.Combine(AppDataFolder, "MediaBrowser-Server");
@@ -59,16 +58,12 @@ namespace MediaBrowser.InstallUtil
         protected void Init(InstallationRequest request)
         {
             Operation = request.Operation;
-            InstallPismo = request.InstallPismo;
             Archive = request.Archive;
             PackageClass = request.PackageClass;
             RequestedVersion = request.Version ?? new Version("4.0");
             Progress = request.Progress;
             ReportStatus = request.ReportStatus;
             MainClient = request.WebClient;
-            if (request.AppDataFolder != null) AppDataFolder = request.AppDataFolder;
-            if (request.StartMenuFolder != null) StartMenuFolder = request.StartMenuFolder;
-            Trace.TraceInformation("appdata: {0}  startmenu: {1}", request.AppDataFolder, request.StartMenuFolder);
 
             switch (request.Product.ToLower())
             {
@@ -130,13 +125,10 @@ namespace MediaBrowser.InstallUtil
                 }
             }
             request.Archive = args.GetValueOrDefault("archive", null);
-            request.InstallPismo = args.GetValueOrDefault("pismo", "true") == "true";
 
             request.Product = args.GetValueOrDefault("product", null) ?? ConfigurationManager.AppSettings["product"] ?? "server";
             request.PackageClass = (PackageVersionClass)Enum.Parse(typeof(PackageVersionClass), args.GetValueOrDefault("class", null) ?? ConfigurationManager.AppSettings["class"] ?? "Release");
             request.Version = new Version(args.GetValueOrDefault("version", "4.0"));
-            request.AppDataFolder = args.GetValueOrDefault("appdata", null);
-            request.StartMenuFolder = args.GetValueOrDefault("startmenu", null);
 
             var callerId = args.GetValueOrDefault("caller", null);
             if (callerId != null)
@@ -303,25 +295,6 @@ namespace MediaBrowser.InstallUtil
                     return new InstallationResult(false, "Error Creating Shortcut", e);
                 }
 
-                // Install Pismo
-                if (InstallPismo)
-                {
-                    Trace.TraceInformation("Installing Pismo ISO package");
-                    ReportStatus("Installing ISO Support...");
-                    try
-                    {
-                        PismoInstall();
-                    }
-                    catch (Exception e)
-                    {
-                        Trace.TraceError("Error installing Pismo. Installation should still be valid. {0}", e.Message);
-                        return new InstallationResult(false, "Error Installing ISO support", e);
-                    }
-                }
-
-                // Now delete the pismo install files
-                Trace.TraceInformation("Deleting Pismo install files");
-                RemovePath(Path.Combine(RootPath, "Pismo"));
             }
 
             // Update stats
@@ -454,9 +427,6 @@ namespace MediaBrowser.InstallUtil
                 var result = await Extract(Archive);
                 if (!result.Success) return result;
 
-                // Now delete the pismo install files - we didn't need them
-                Trace.TraceInformation("Deleting Pismo install files");
-                RemovePath(Path.Combine(RootPath, "Pismo"));
             }
 
             // Update stats
@@ -489,15 +459,6 @@ namespace MediaBrowser.InstallUtil
                 directoryInfo.SetAccessControl(directorySecurity);
                 
             });
-
-        }
-
-        private void PismoInstall()
-        {
-            // Kick off the Pismo installer and wait for it to end
-            var pismo = new Process {StartInfo = {WindowStyle = ProcessWindowStyle.Hidden, FileName = Path.Combine(RootPath, "Pismo", "pfminst.exe"), Arguments = "install"}};
-            pismo.Start();
-            pismo.WaitForExit();
 
         }
 

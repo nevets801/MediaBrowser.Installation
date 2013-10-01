@@ -31,42 +31,19 @@ namespace MediaBrowser.Theater.Installer
 
         public MainWindow()
         {
-            if (!InstallUtil.Installer.IsAdmin)
-            {
-                RunAsAdmin();
-            }
-            else
-            {
-                InitializeComponent();
-                var logPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-InstallLogs");
-                if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
-                var logFile = Path.Combine(logPath, "theater-install.log");
-                if (File.Exists(logFile)) File.Delete(logFile);
-                Trace.Listeners.Add(new TextWriterTraceListener(logFile));
-                Trace.AutoFlush = true;
-                var request = InstallUtil.Installer.ParseArgsAndWait(Environment.GetCommandLineArgs());
-                request.ReportStatus = UpdateStatus;
-                request.Progress = new ProgressUpdater(this);
-                request.WebClient = MainClient;
-                Trace.TraceInformation("Creating install session for {0}", request.Product);
-                DoInstall(new InstallUtil.Installer(request)); // fire and forget so we get our window up
-            }
-        }
-
-        private void RunAsAdmin()
-        {
-            // Get the folder locations for the current user before we switch to admin and pass on
-            var folderArgs = string.Format(" appdata=\"{0}\" startmenu=\"{1}\"", Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), Environment.GetFolderPath(Environment.SpecialFolder.StartMenu));
-            
-            var info = new ProcessStartInfo
-            {
-                FileName = Process.GetCurrentProcess().MainModule.FileName,
-                Arguments = string.Join(" ", Environment.GetCommandLineArgs().Skip(1)) + folderArgs + " admin=true",
-                Verb = "runas"
-            };
-
-            Process.Start(info);
-            SystemClose();
+            InitializeComponent();
+            var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-InstallLogs");
+            if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
+            var logFile = Path.Combine(logPath, "theater-install.log");
+            if (File.Exists(logFile)) File.Delete(logFile);
+            Trace.Listeners.Add(new TextWriterTraceListener(logFile));
+            Trace.AutoFlush = true;
+            var request = InstallUtil.Installer.ParseArgsAndWait(Environment.GetCommandLineArgs());
+            request.ReportStatus = UpdateStatus;
+            request.Progress = new ProgressUpdater(this);
+            request.WebClient = MainClient;
+            Trace.TraceInformation("Creating install session for {0}", request.Product);
+            DoInstall(new InstallUtil.Installer(request)); // fire and forget so we get our window up
         }
 
         private class ProgressUpdater : IProgress<double>
