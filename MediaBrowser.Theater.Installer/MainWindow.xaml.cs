@@ -55,10 +55,13 @@ namespace MediaBrowser.Theater.Installer
 
         private void RunAsAdmin()
         {
+            // Get the folder locations for the current user before we switch to admin and pass on
+            var folderArgs = string.Format(" appdata=\"{0}\" startmenu=\"{1}\"", Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), Environment.GetFolderPath(Environment.SpecialFolder.StartMenu));
+            
             var info = new ProcessStartInfo
             {
                 FileName = Process.GetCurrentProcess().MainModule.FileName,
-                Arguments = string.Join(" ", Environment.GetCommandLineArgs().Skip(1)) + " admin=true",
+                Arguments = string.Join(" ", Environment.GetCommandLineArgs().Skip(1)) + folderArgs + " admin=true",
                 Verb = "runas"
             };
 

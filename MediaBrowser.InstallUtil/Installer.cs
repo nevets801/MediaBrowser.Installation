@@ -33,9 +33,11 @@ namespace MediaBrowser.InstallUtil
         protected string FriendlyName = "Media Browser Server";
         protected string Archive = null;
         protected bool InstallPismo = true;
-        protected string RootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-Server");
-        protected string EndInstallPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-Server");
-        protected string StartMenuPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Media Browser 3");
+        protected static string AppDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        protected static string StartMenuFolder = Environment.GetFolderPath(Environment.SpecialFolder.StartMenu);
+        protected string RootPath = Path.Combine(AppDataFolder, "MediaBrowser-Server");
+        protected string EndInstallPath = Path.Combine(AppDataFolder, "MediaBrowser-Server");
+        protected string StartMenuPath = Path.Combine(StartMenuFolder, "Media Browser 3");
         protected IProgress<double> Progress;
         protected Action<string> ReportStatus; 
 
@@ -64,6 +66,9 @@ namespace MediaBrowser.InstallUtil
             Progress = request.Progress;
             ReportStatus = request.ReportStatus;
             MainClient = request.WebClient;
+            if (request.AppDataFolder != null) AppDataFolder = request.AppDataFolder;
+            if (request.StartMenuFolder != null) StartMenuFolder = request.StartMenuFolder;
+            Trace.TraceInformation("appdata: {0}  startmenu: {1}", request.AppDataFolder, request.StartMenuFolder);
 
             switch (request.Product.ToLower())
             {
@@ -72,7 +77,7 @@ namespace MediaBrowser.InstallUtil
                     RootSuffix = "-Theater";
                     TargetExe = "MediaBrowser.UI.exe";
                     FriendlyName = "Media Browser Theater";
-                    RootPath = EndInstallPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser" + RootSuffix);
+                    RootPath = EndInstallPath = Path.Combine(AppDataFolder, "MediaBrowser" + RootSuffix);
                     EndInstallPath = Path.Combine(RootPath, "system");
                     break;
 
@@ -91,7 +96,7 @@ namespace MediaBrowser.InstallUtil
                     RootSuffix = "-Server";
                     TargetExe = "MediaBrowser.ServerApplication.exe";
                     FriendlyName = "Media Browser Server";
-                    RootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser" + RootSuffix);
+                    RootPath = Path.Combine(AppDataFolder, "MediaBrowser" + RootSuffix);
                     EndInstallPath = Path.Combine(RootPath, "system");
                     break;
             }
@@ -130,6 +135,8 @@ namespace MediaBrowser.InstallUtil
             request.Product = args.GetValueOrDefault("product", null) ?? ConfigurationManager.AppSettings["product"] ?? "server";
             request.PackageClass = (PackageVersionClass)Enum.Parse(typeof(PackageVersionClass), args.GetValueOrDefault("class", null) ?? ConfigurationManager.AppSettings["class"] ?? "Release");
             request.Version = new Version(args.GetValueOrDefault("version", "4.0"));
+            request.AppDataFolder = args.GetValueOrDefault("appdata", null);
+            request.StartMenuFolder = args.GetValueOrDefault("startmenu", null);
 
             var callerId = args.GetValueOrDefault("caller", null);
             if (callerId != null)
