@@ -297,6 +297,10 @@ namespace MediaBrowser.InstallUtil
 
             }
 
+            // Now delete the pismo install files
+            Trace.TraceInformation("Deleting Pismo install files");
+            RemovePath(Path.Combine(RootPath, "Pismo"));
+
             // Update stats
             UpdateStats();
 
