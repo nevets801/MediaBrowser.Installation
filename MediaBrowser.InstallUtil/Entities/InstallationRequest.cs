@@ -13,5 +13,6 @@ namespace MediaBrowser.InstallUtil.Entities
         public IProgress<double> Progress { get; set; }
         public Action<string> ReportStatus { get; set; }
         public WebClient WebClient { get; set; }
+        public string ServiceName { get; set; }
     }
 }

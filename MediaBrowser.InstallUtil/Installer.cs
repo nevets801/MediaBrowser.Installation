@@ -38,8 +38,8 @@ namespace MediaBrowser.InstallUtil
         protected string EndInstallPath = Path.Combine(AppDataFolder, "MediaBrowser-Server");
         protected string StartMenuPath = Path.Combine(StartMenuFolder, "Media Browser 3");
         protected IProgress<double> Progress;
-        protected Action<string> ReportStatus; 
-
+        protected Action<string> ReportStatus;
+        protected string ServiceName;
         protected InstallOperation Operation;
 
         protected static string TempLocation = Path.Combine(Path.GetTempPath(), "MediaBrowser");
@@ -64,6 +64,7 @@ namespace MediaBrowser.InstallUtil
             Progress = request.Progress;
             ReportStatus = request.ReportStatus;
             MainClient = request.WebClient;
+            ServiceName = request.ServiceName;
 
             switch (request.Product.ToLower())
             {
@@ -129,6 +130,7 @@ namespace MediaBrowser.InstallUtil
             request.Product = args.GetValueOrDefault("product", null) ?? ConfigurationManager.AppSettings["product"] ?? "server";
             request.PackageClass = (PackageVersionClass)Enum.Parse(typeof(PackageVersionClass), args.GetValueOrDefault("class", null) ?? ConfigurationManager.AppSettings["class"] ?? "Release");
             request.Version = new Version(args.GetValueOrDefault("version", "4.0"));
+            request.ServiceName = args.GetValueOrDefault("service", string.Empty);
 
             var callerId = args.GetValueOrDefault("caller", null);
             if (callerId != null)
@@ -384,6 +386,23 @@ namespace MediaBrowser.InstallUtil
 
         protected InstallationResult RunProgram()
         {
+            if (!string.IsNullOrEmpty(ServiceName))
+            {
+                Trace.TraceInformation("Attempting to start service {0}", ServiceName);
+                ReportStatus(String.Format("Starting {0}...", FriendlyName));
+
+                try
+                {
+                    Process.Start("cmd", "/c net start " + ServiceName);
+                }
+                catch (Exception e)
+                {
+                    Trace.TraceError("Error starting program. Installation should still be valid. {0}", e.Message);
+                    return new InstallationResult(false, "Error Starting service " + ServiceName, e);
+                }
+                return new InstallationResult();
+            }
+
             Trace.TraceInformation("Attempting to start program {0} {1}", Path.Combine(EndInstallPath, TargetExe), TargetArgs);
             ReportStatus(String.Format("Starting {0}...", FriendlyName));
             try
