@@ -242,7 +242,7 @@ namespace MediaBrowser.InstallUtil
                 catch (Exception e)
                 {
                     Trace.TraceError("Error downloading.  Installation aborting. {0}", e.Message);
-                    return new InstallationResult(false, "Error Downloading Package", e);
+                    return new InstallationResult(false, "Error Downloading Package. There may be a problem communicating with the update server.  Please try again.\n\n", e);
                 }
             }
             else
