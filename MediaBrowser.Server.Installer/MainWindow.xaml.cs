@@ -20,26 +20,19 @@ namespace MediaBrowser.Server.Installer
 
         public MainWindow()
         {
-            if (!InstallUtil.Installer.IsAdmin)
-            {
-                RunAsAdmin();
-            }
-            else
-            {
-                InitializeComponent();
-                var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-InstallLogs");
-                if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
-                var logFile = Path.Combine(logPath, "server-install.log");
-                if (File.Exists(logFile)) File.Delete(logFile);
-                Trace.Listeners.Add(new TextWriterTraceListener(logFile));
-                Trace.AutoFlush = true;
-                var request = InstallUtil.Installer.ParseArgsAndWait(Environment.GetCommandLineArgs());
-                request.ReportStatus = UpdateStatus;
-                request.Progress = new ProgressUpdater(this);
-                request.WebClient = MainClient;
-                Trace.TraceInformation("Creating install session for {0}", request.Product);
-                DoInstall(new InstallUtil.Installer(request)); // fire and forget so we get our window up
-            }
+            InitializeComponent();
+            var logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-InstallLogs");
+            if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
+            var logFile = Path.Combine(logPath, "server-install.log");
+            if (File.Exists(logFile)) File.Delete(logFile);
+            Trace.Listeners.Add(new TextWriterTraceListener(logFile));
+            Trace.AutoFlush = true;
+            var request = InstallUtil.Installer.ParseArgsAndWait(Environment.GetCommandLineArgs());
+            request.ReportStatus = UpdateStatus;
+            request.Progress = new ProgressUpdater(this);
+            request.WebClient = MainClient;
+            Trace.TraceInformation("Creating install session for {0}", request.Product);
+            DoInstall(new InstallUtil.Installer(request)); // fire and forget so we get our window up
         }
 
         private void RunAsAdmin()
