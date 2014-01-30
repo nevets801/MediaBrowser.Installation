@@ -74,7 +74,7 @@ namespace MediaBrowser.InstallUtil
                     RootSuffix = "-Theater";
                     TargetExe = "MediaBrowser.UI.exe";
                     FriendlyName = "Media Browser Theater";
-                    RootPath = EndInstallPath = Path.Combine(AppDataFolder, "MediaBrowser" + RootSuffix);
+                    RootPath = request.InstallPath ?? Path.Combine(AppDataFolder, "MediaBrowser" + RootSuffix);
                     EndInstallPath = Path.Combine(RootPath, "system");
                     break;
 
@@ -93,7 +93,7 @@ namespace MediaBrowser.InstallUtil
                     RootSuffix = "-Server";
                     TargetExe = "MediaBrowser.ServerApplication.exe";
                     FriendlyName = "Media Browser Server";
-                    RootPath = Path.Combine(AppDataFolder, "MediaBrowser" + RootSuffix);
+                    RootPath = request.InstallPath ?? Path.Combine(AppDataFolder, "MediaBrowser" + RootSuffix);
                     EndInstallPath = Path.Combine(RootPath, "system");
                     break;
             }
@@ -132,7 +132,7 @@ namespace MediaBrowser.InstallUtil
             request.PackageClass = (PackageVersionClass)Enum.Parse(typeof(PackageVersionClass), args.GetValueOrDefault("class", null) ?? ConfigurationManager.AppSettings["class"] ?? "Release");
             request.Version = new Version(args.GetValueOrDefault("version", "4.0"));
             request.ServiceName = args.GetValueOrDefault("service", string.Empty);
-            //request.InstallPath = args.GetValueOrDefault("installpath", null);
+            request.InstallPath = args.GetValueOrDefault("installpath", null);
 
             var callerId = args.GetValueOrDefault("caller", null);
             if (callerId != null)

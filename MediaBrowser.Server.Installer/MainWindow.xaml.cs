@@ -34,6 +34,7 @@ namespace MediaBrowser.Server.Installer
                 Trace.Listeners.Add(new TextWriterTraceListener(logFile));
                 Trace.AutoFlush = true;
                 var request = InstallUtil.Installer.ParseArgsAndWait(Environment.GetCommandLineArgs());
+                request.InstallPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MediaBrowser-Server");
                 request.ReportStatus = UpdateStatus;
                 request.Progress = new ProgressUpdater(this);
                 request.WebClient = MainClient;
