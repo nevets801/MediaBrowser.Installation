@@ -132,7 +132,7 @@ namespace MediaBrowser.InstallUtil
             request.PackageClass = (PackageVersionClass)Enum.Parse(typeof(PackageVersionClass), args.GetValueOrDefault("class", null) ?? ConfigurationManager.AppSettings["class"] ?? "Release");
             request.Version = new Version(args.GetValueOrDefault("version", "4.0"));
             request.ServiceName = args.GetValueOrDefault("service", string.Empty);
-            request.InstallPath = args.GetValueOrDefault("installpath", null);
+            //request.InstallPath = args.GetValueOrDefault("installpath", null);
 
             var callerId = args.GetValueOrDefault("caller", null);
             if (callerId != null)
